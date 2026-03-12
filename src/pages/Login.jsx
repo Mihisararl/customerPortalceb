@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { isValidAccountNumberFormat } from '../services/cebApi';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Alert from '../components/Alert';
-import bgImage from '../assets/bgimg.jpg';
+import bgVideo from '../assets/electricity.mp4';
 import logoImage from '../assets/ceb-1.png';
 
 const Login = () => {
@@ -29,6 +30,12 @@ const Login = () => {
 
         if (!accountNumber.trim()) {
             setError('Please enter your account number');
+            return;
+        }
+
+        // Validate account number format (must be exactly 10 digits)
+        if (!isValidAccountNumberFormat(accountNumber.trim())) {
+            setError('Account number must be exactly 10 digits');
             return;
         }
 
@@ -99,15 +106,6 @@ const Login = () => {
         }
     };
 
-    const handleQuickLogin = async (accNumber) => {
-        try {
-            await login(accNumber);
-            navigate('/dashboard');
-        } catch (err) {
-            setError(err.message);
-        }
-    };
-
     const resetMobileLogin = () => {
         setShowAccountSelection(false);
         setAvailableAccounts([]);
@@ -123,18 +121,20 @@ const Login = () => {
     };
 
     return (
-        <div
-            className="min-h-screen relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8"
-            style={{
-                backgroundImage: `url(${bgImage})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-                backgroundAttachment: 'fixed',
-            }}
-        >
+        <div className="min-h-screen relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+            {/* Background Video */}
+            <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover"
+            >
+                <source src={bgVideo} type="video/mp4" />
+            </video>
+
             {/* Dark overlay for better text readability */}
-            <div className="absolute inset-0 bg-blue-500/30 backdrop-blur-sm"></div>
+            <div className="absolute inset-0 bg-blue-300/50 backdrop-blur-sm"></div>
 
             <div className="max-w-md w-full relative z-10">
                 {/* Header */}
@@ -142,16 +142,14 @@ const Login = () => {
                     <div className="flex justify-center mb-6">
                         <img
                             src={logoImage}
-                            alt="Ceylon Electricity Board"
+                            alt="Electricity Distribution Lanka (Pvt) Ltd"
                             className="h-24 w-auto object-contain drop-shadow-2xl"
                         />
                     </div>
                     <h1 className="text-3xl font-bold text-white drop-shadow-lg">
-                        CEB Customer Portal
+                        EDL Customer Portal
                     </h1>
-                    <p className="mt-2 text-white drop-shadow">
-                        View bills, payment history, and more
-                    </p>
+
                 </div>
 
                 {/* Login Card with Gradient */}
@@ -171,8 +169,8 @@ const Login = () => {
                                 resetNICLogin();
                             }}
                             className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-all duration-200 ${loginMethod === 'account'
-                                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
+                                : 'text-gray-600 hover:text-gray-900'
                                 }`}
                         >
                             Account Number
@@ -180,30 +178,22 @@ const Login = () => {
                         <button
                             type="button"
                             onClick={() => {
-                                setLoginMethod('mobile');
-                                setError('');
-                                setAccountNumber('');
-                                resetNICLogin();
+                                setError('Login by mobile number is currently unavailable. Please use your account number.');
                             }}
-                            className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-all duration-200 ${loginMethod === 'mobile'
-                                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
-                                    : 'text-gray-600 hover:text-gray-900'
-                                }`}
+                            className="flex-1 py-2.5 px-4 rounded-lg font-medium transition-all duration-200 text-gray-400 cursor-not-allowed opacity-60"
+                            disabled
+                            title="Mobile login is currently unavailable"
                         >
                             Mobile Number
                         </button>
                         <button
                             type="button"
                             onClick={() => {
-                                setLoginMethod('nic');
-                                setError('');
-                                setAccountNumber('');
-                                resetMobileLogin();
+                                setError('Login by NIC is currently unavailable. Please use your account number.');
                             }}
-                            className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-all duration-200 ${loginMethod === 'nic'
-                                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
-                                    : 'text-gray-600 hover:text-gray-900'
-                                }`}
+                            className="flex-1 py-2.5 px-4 rounded-lg font-medium transition-all duration-200 text-gray-400 cursor-not-allowed opacity-60"
+                            disabled
+                            title="NIC login is currently unavailable"
                         >
                             NIC
                         </button>
@@ -226,11 +216,21 @@ const Login = () => {
                                     id="accountNumber"
                                     type="text"
                                     value={accountNumber}
-                                    onChange={(e) => setAccountNumber(e.target.value)}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/\D/g, ''); // Allow only digits
+                                        if (value.length <= 10) {
+                                            setAccountNumber(value);
+                                        }
+                                    }}
                                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                                    placeholder="Enter your account number"
+                                    placeholder="Enter 10-digit account number"
+                                    maxLength="10"
+                                    pattern="\d{10}"
                                     disabled={loading}
                                 />
+                                <p className="mt-1.5 text-xs text-gray-500">
+                                    Enter your 10-digit CEB account number
+                                </p>
                             </div>
 
                             <button
@@ -364,29 +364,6 @@ const Login = () => {
                             </button>
                         </div>
                     )}
-
-                    {/* Demo Accounts */}
-                    <div className="mt-8 pt-6 border-t border-gray-300">
-                        <p className="text-xs text-gray-600 mb-3 text-center font-medium">
-                            Demo Accounts (For Testing)
-                        </p>
-                        <div className="space-y-2">
-                            {['ACC001', 'ACC002', 'ACC003'].map((acc) => (
-                                <button
-                                    key={acc}
-                                    onClick={() => handleQuickLogin(acc)}
-                                    disabled={loading}
-                                    className="w-full px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition duration-200 disabled:opacity-50"
-                                >
-                                    Quick Login: {acc}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="mt-3 text-xs text-gray-500 text-center space-y-1">
-                            <p>Mobile: 0769876543 (ACC002 & ACC003)</p>
-                            <p>NIC: 198567890123 (ACC002 & ACC003)</p>
-                        </div>
-                    </div>
                 </div>
 
                 {/* Help Section */}

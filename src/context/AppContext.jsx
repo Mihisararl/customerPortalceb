@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { customers, bills, payments, notifications, getAccountsByMobile, getAccountsByNIC } from '../data/mockData';
+import { bills, payments, notifications } from '../data/mockData';
+import { validateAccountNumber } from '../services/cebApi';
 
 const AppContext = createContext();
 
@@ -27,75 +28,57 @@ export const AppProvider = ({ children }) => {
         }
     }, []);
 
-    // Login function
+    // Login function - Uses real CEB API to validate account number
     const login = async (accountNumber) => {
         setLoading(true);
         setError(null);
 
-        // Simulate API call
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                const customer = customers.find(c => c.accountNumber === accountNumber);
+        try {
+            // Call real API to validate and get customer details
+            const customerData = await validateAccountNumber(accountNumber);
 
-                if (customer) {
-                    setCurrentAccount(customer);
-                    setIsAuthenticated(true);
-                    localStorage.setItem('currentAccount', JSON.stringify(customer));
-                    setLoading(false);
-                    resolve(customer);
-                } else {
-                    const errorMsg = 'Account number not found. Please check and try again.';
-                    setError(errorMsg);
-                    setLoading(false);
-                    reject(new Error(errorMsg));
-                }
-            }, 1000);
-        });
+            setCurrentAccount(customerData);
+            setIsAuthenticated(true);
+            localStorage.setItem('currentAccount', JSON.stringify(customerData));
+            setLoading(false);
+            return customerData;
+        } catch (err) {
+            const errorMsg = err.message || 'Failed to validate account number';
+            setError(errorMsg);
+            setLoading(false);
+            throw new Error(errorMsg);
+        }
     };
 
-    // Get accounts by mobile number
+    // Get accounts by mobile number - Not available (no API endpoint)
     const getAccountsByMobileNumber = async (mobileNumber) => {
         setLoading(true);
         setError(null);
 
-        // Simulate API call
+        // This feature is not available as there's no API endpoint for it
         return new Promise((resolve, reject) => {
             setTimeout(() => {
-                const accounts = getAccountsByMobile(mobileNumber);
-
-                if (accounts.length > 0) {
-                    setLoading(false);
-                    resolve(accounts);
-                } else {
-                    const errorMsg = 'No accounts found for this mobile number.';
-                    setError(errorMsg);
-                    setLoading(false);
-                    reject(new Error(errorMsg));
-                }
-            }, 1000);
+                const errorMsg = 'Login by mobile number is not available. Please use your 10-digit account number.';
+                setError(errorMsg);
+                setLoading(false);
+                reject(new Error(errorMsg));
+            }, 500);
         });
     };
 
-    // Get accounts by NIC
+    // Get accounts by NIC - Not available (no API endpoint)
     const getAccountsByNICNumber = async (nic) => {
         setLoading(true);
         setError(null);
 
-        // Simulate API call
+        // This feature is not available as there's no API endpoint for it
         return new Promise((resolve, reject) => {
             setTimeout(() => {
-                const accounts = getAccountsByNIC(nic);
-
-                if (accounts.length > 0) {
-                    setLoading(false);
-                    resolve(accounts);
-                } else {
-                    const errorMsg = 'No accounts found for this NIC.';
-                    setError(errorMsg);
-                    setLoading(false);
-                    reject(new Error(errorMsg));
-                }
-            }, 1000);
+                const errorMsg = 'Login by NIC is not available. Please use your 10-digit account number.';
+                setError(errorMsg);
+                setLoading(false);
+                reject(new Error(errorMsg));
+            }, 500);
         });
     };
 

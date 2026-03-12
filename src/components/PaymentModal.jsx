@@ -59,7 +59,7 @@ const PaymentModal = ({ isOpen, onClose, bill, onPaymentSuccess }) => {
                                 className="w-12 h-12 object-contain"
                             />
                             <div>
-                                <h2 className="text-2xl font-bold text-white">Ceylon Electricity Board</h2>
+                                <h2 className="text-2xl font-bold text-white">Electricity Distribution Lanka (Pvt) Ltd</h2>
                                 <p className="text-blue-100 mt-1">Customer Bill Statement</p>
                             </div>
                         </div>

@@ -25,6 +25,39 @@ const Dashboard = () => {
     const lastPayment = getLastPayment();
     const notifications = getNotifications();
 
+    // Calculate due date from billing month (typically 20 days after billing month ends)
+    const calculateDueDate = (billingMonth) => {
+        if (!billingMonth) return null;
+
+        try {
+            // billingMonth format could be "YYYY-MM" or "Month YYYY"
+            let date;
+            if (billingMonth.includes('-')) {
+                // Format: "2026-02"
+                const [year, month] = billingMonth.split('-');
+                date = new Date(parseInt(year), parseInt(month), 20); // 20th of next month
+            } else {
+                // Try to parse "February 2026" format
+                date = new Date(billingMonth);
+                if (!isNaN(date.getTime())) {
+                    date.setMonth(date.getMonth() + 1);
+                    date.setDate(20);
+                }
+            }
+            return date && !isNaN(date.getTime()) ? date : null;
+        } catch (error) {
+            console.error('Error parsing billing month:', error);
+            return null;
+        }
+    };
+
+    const dueDate = currentAccount?.billingMonth ? calculateDueDate(currentAccount.billingMonth) : null;
+
+    // Get last payment from API data if available
+    const lastPaymentFromAPI = currentAccount?.recentPayments && currentAccount.recentPayments.length > 0
+        ? currentAccount.recentPayments[0]
+        : null;
+
     const handlePaymentSuccess = (paymentInfo) => {
         setShowPaymentModal(false);
         setPaymentSuccess(true);
@@ -151,7 +184,7 @@ const Dashboard = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
 
                                 <div>
-                                    <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', margin: 0 }}>Ceylon Electricity Board</p>
+                                    <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', margin: 0 }}>Electricity Distribution Lanka (Pvt) Ltd</p>
                                     <h1 style={{ color: 'white', fontSize: '26px', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>
                                         Welcome, {currentAccount?.customerName?.split(' ')[0]}!
                                     </h1>
@@ -218,8 +251,13 @@ const Dashboard = () => {
                     <div className="stat-card">
                         <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#2563eb', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Bill</p>
                         <p style={{ margin: 0, fontSize: '32px', fontWeight: 900, color: '#1e293b', lineHeight: '1.2' }}>
-                            {currentBill ? formatCurrency(currentBill.totalAmount) : 'N/A'}
+                            {currentAccount?.currentBalance ? formatCurrency(currentAccount.currentBalance) : 'N/A'}
                         </p>
+                        {currentAccount?.billingMonth && (
+                            <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                                {currentAccount.billingMonth}
+                            </p>
+                        )}
                         <Link to="/bills" style={{ display: 'inline-block', marginTop: '12px', fontSize: '13px', color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>View bill →</Link>
                     </div>
 
@@ -227,10 +265,12 @@ const Dashboard = () => {
                     <div className="stat-card">
                         <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#7c3aed', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Due Date</p>
                         <p style={{ margin: 0, fontSize: '22px', fontWeight: 900, color: '#1e293b', lineHeight: '1.2' }}>
-                            {currentBill ? formatDate(currentBill.dueDate) : 'N/A'}
+                            {dueDate ? formatDate(dueDate) : 'N/A'}
                         </p>
-                        {currentBill && !currentBill.isPaid && (
-                            <span style={{ display: 'inline-block', marginTop: '12px', background: '#fef3c7', color: '#92400e', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 600 }}>Unpaid</span>
+                        {currentAccount?.currentBalance > 0 && (
+                            <span style={{ display: 'inline-block', marginTop: '12px', background: '#fef3c7', color: '#92400e', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 600 }}>
+                                {currentAccount?.billingMonth || 'This billing period'}
+                            </span>
                         )}
                     </div>
 
@@ -238,18 +278,41 @@ const Dashboard = () => {
                     <div className="stat-card">
                         <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#16a34a', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Last Payment</p>
                         <p style={{ margin: 0, fontSize: '32px', fontWeight: 900, color: '#1e293b', lineHeight: '1.2' }}>
-                            {lastPayment ? formatCurrency(lastPayment.amount) : 'None'}
+                            {currentAccount?.lastPaymentAmount
+                                ? formatCurrency(currentAccount.lastPaymentAmount)
+                                : lastPaymentFromAPI
+                                    ? formatCurrency(lastPaymentFromAPI.paidAmount || lastPaymentFromAPI.amount || 0)
+                                    : lastPayment
+                                        ? formatCurrency(lastPayment.amount)
+                                        : 'None'
+                            }
                         </p>
-                        {lastPayment && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#64748b', fontWeight: 500 }}>{formatDate(lastPayment.paymentDate)}</p>}
+                        {(currentAccount?.lastPaymentDate || lastPaymentFromAPI || lastPayment) && (
+                            <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                                {currentAccount?.lastPaymentDate
+                                    ? formatDate(currentAccount.lastPaymentDate)
+                                    : lastPaymentFromAPI
+                                        ? formatDate(lastPaymentFromAPI.paidDate || lastPaymentFromAPI.paymentDate || lastPaymentFromAPI.date || new Date())
+                                        : formatDate(lastPayment.paymentDate)
+                                }
+                            </p>
+                        )}
                     </div>
 
                     {/* Units Used */}
                     <div className="stat-card">
                         <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#ea580c', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Units Used</p>
                         <p style={{ margin: 0, fontSize: '32px', fontWeight: 900, color: '#1e293b', lineHeight: '1.2' }}>
-                            {currentBill?.units ?? 'N/A'} <span style={{ fontSize: '16px', fontWeight: 600, color: '#94a3b8' }}>kWh</span>
+                            {currentAccount?.units
+                                ? <>{currentAccount.units} <span style={{ fontSize: '16px', fontWeight: 600, color: '#94a3b8' }}>kWh</span></>
+                                : currentBill?.units
+                                    ? <>{currentBill.units} <span style={{ fontSize: '16px', fontWeight: 600, color: '#94a3b8' }}>kWh</span></>
+                                    : 'N/A'
+                            }
                         </p>
-                        <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#64748b', fontWeight: 500 }}>This billing period</p>
+                        <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                            {currentAccount?.billingMonth || 'This billing period'}
+                        </p>
                     </div>
                 </div>
 

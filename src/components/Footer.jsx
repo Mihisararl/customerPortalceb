@@ -12,7 +12,7 @@ const Footer = () => {
                     <div>
                         <div className="flex items-center space-x-3 mb-4">
                             <img src={logoImage} alt="CEB" className="h-12 w-auto object-contain drop-shadow-lg" />
-                            <h3 className="text-lg font-semibold">Ceylon Electricity Board</h3>
+                            <h3 className="text-lg font-semibold">Electricity Distribution Lanka (Pvt) Ltd</h3>
                         </div>
                         <p className="text-gray-300 text-sm">
                             Providing reliable and efficient electricity services to customers across Sri Lanka.
@@ -69,7 +69,7 @@ const Footer = () => {
                 </div>
 
                 <div className="border-t border-gray-700 mt-8 pt-6 text-center text-sm text-gray-400">
-                    <p>&copy; {currentYear} Ceylon Electricity Board. All rights reserved.</p>
+                    <p>&copy; {currentYear} Electricity Distribution Lanka (Pvt) Ltd. All rights reserved.</p>
                 </div>
             </div>
         </footer>

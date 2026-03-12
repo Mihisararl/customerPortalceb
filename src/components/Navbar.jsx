@@ -36,7 +36,7 @@ const Navbar = () => {
                                     className="h-10 w-auto object-contain"
                                 />
                                 <span className="ml-3 text-xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent hidden sm:block">
-                                    Ceylon Electricity Board
+                                    Electricity Distribution Lanka (Pvt) Ltd
                                 </span>
                             </div>
                         </Link>

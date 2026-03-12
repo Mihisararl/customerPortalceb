@@ -68,7 +68,7 @@ const PrintBill = () => {
                                     className="w-16 h-16 object-contain"
                                 />
                                 <div>
-                                    <h1 className="text-3xl font-bold mb-2">Ceylon Electricity Board</h1>
+                                    <h1 className="text-3xl font-bold mb-2">Electricity Distribution Lanka (Pvt) Ltd</h1>
                                     <p className="text-primary-100">Customer Bill Statement</p>
                                 </div>
                             </div>
@@ -228,7 +228,7 @@ const PrintBill = () => {
 
                         {/* Footer */}
                         <div className="border-t-2 border-gray-200 pt-6 text-center text-sm text-gray-600">
-                            <p className="font-semibold mb-2">Ceylon Electricity Board</p>
+                            <p className="font-semibold mb-2">Electricity Distribution Lanka (Pvt) Ltd</p>
                             <p>No. 50, Sir Chittampalam A. Gardiner Mawatha, Colombo 02</p>
                             <p>Hotline: 1987 | Email: customercare@ceb.lk</p>
                             <p className="mt-3 text-xs">

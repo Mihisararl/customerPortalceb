@@ -62,7 +62,7 @@ export const generateBillPDF = (bill, customer) => {
     // Header - aligned with logo
     doc.setFontSize(20);
     doc.setFont(undefined, 'bold');
-    doc.text('Ceylon Electricity Board', logoX + logoWidth + 5, 20);
+    doc.text('Electricity Distribution Lanka (Pvt) Ltd', logoX + logoWidth + 5, 20);
 
     doc.setFontSize(11);
     doc.setFont(undefined, 'normal');
@@ -151,7 +151,7 @@ export const generateBillPDF = (bill, customer) => {
     doc.setFontSize(8);
     doc.setFont(undefined, 'italic');
     const footerY = doc.internal.pageSize.height - 20;
-    doc.text('Thank you for being a valued customer of Ceylon Electricity Board', pageWidth / 2, footerY, { align: 'center' });
+    doc.text('Thank you for being a valued customer of Electricity Distribution Lanka (Pvt) Ltd', pageWidth / 2, footerY, { align: 'center' });
     doc.text('For inquiries, call: 1987 | Email: customercare@ceb.lk', pageWidth / 2, footerY + 5, { align: 'center' });
 
     // Save the PDF
@@ -172,7 +172,7 @@ export const generatePaymentSlipPDF = (payment, bill, customer) => {
     // Header - aligned with logo
     doc.setFontSize(20);
     doc.setFont(undefined, 'bold');
-    doc.text('Ceylon Electricity Board', logoX + logoWidth + 5, 20);
+    doc.text('Electricity Distribution Lanka (Pvt) Ltd', logoX + logoWidth + 5, 20);
 
     doc.setFontSize(13);
     doc.setFont(undefined, 'normal');

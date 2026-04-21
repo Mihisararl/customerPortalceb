@@ -11,6 +11,12 @@ export default defineConfig({
                 target: 'http://10.128.1.59:6001',
                 changeOrigin: true,
                 secure: false,
+            },
+            '/shared-api': {
+                target: 'http://10.128.1.227:8080/SharedService',
+                changeOrigin: true,
+                secure: false,
+                rewrite: (path) => path.replace(/^\/shared-api/, ''),
             }
         }
     }

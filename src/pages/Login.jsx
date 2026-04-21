@@ -2,20 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { isValidAccountNumberFormat } from '../services/cebApi';
-import LoadingSpinner from '../components/LoadingSpinner';
 import Alert from '../components/Alert';
 import bgVideo from '../assets/electricity.mp4';
 import logoImage from '../assets/ceb-1.png';
 
 const Login = () => {
-    const [loginMethod, setLoginMethod] = useState('account'); // 'account', 'mobile', or 'nic'
     const [accountNumber, setAccountNumber] = useState('');
     const [mobileNumber, setMobileNumber] = useState('');
-    const [nicNumber, setNicNumber] = useState('');
-    const [availableAccounts, setAvailableAccounts] = useState([]);
-    const [showAccountSelection, setShowAccountSelection] = useState(false);
+    const [otpCode, setOtpCode] = useState('');
+    const [loginStep, setLoginStep] = useState('account');
+    const [validatedAccountName, setValidatedAccountName] = useState('');
+    const [otpTarget, setOtpTarget] = useState('');
     const [error, setError] = useState('');
-    const { login, getAccountsByMobileNumber, getAccountsByNICNumber, isAuthenticated, loading } = useApp();
+    const {
+        validateAccountForLogin,
+        requestOtpForAccount,
+        verifyOtpAndLogin,
+        clearPendingOtpLogin,
+        isAuthenticated,
+        loading,
+    } = useApp();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -40,8 +46,9 @@ const Login = () => {
         }
 
         try {
-            await login(accountNumber.trim());
-            navigate('/dashboard');
+            const accountResponse = await validateAccountForLogin(accountNumber.trim());
+            setValidatedAccountName(accountResponse.customerName || '');
+            setLoginStep('mobile');
         } catch (err) {
             setError(err.message);
         }
@@ -57,66 +64,49 @@ const Login = () => {
         }
 
         try {
-            const accounts = await getAccountsByMobileNumber(mobileNumber.trim());
-            if (accounts.length === 1) {
-                // If only one account, login directly
-                await login(accounts[0].accountNumber);
-                navigate('/dashboard');
-            } else {
-                // Show account selection
-                setAvailableAccounts(accounts);
-                setShowAccountSelection(true);
-            }
+            const otpResponse = await requestOtpForAccount(accountNumber.trim(), mobileNumber.trim());
+            setOtpTarget(otpResponse.maskedMobileNo || otpResponse.mobileNo || 'your mobile number');
+            setLoginStep('otp');
         } catch (err) {
             setError(err.message);
         }
     };
 
-    const handleNICSubmit = async (e) => {
+    const handleVerifyOtp = async (e) => {
         e.preventDefault();
         setError('');
 
-        if (!nicNumber.trim()) {
-            setError('Please enter your NIC number');
+        if (!otpCode.trim()) {
+            setError('Please enter the OTP code');
             return;
         }
 
         try {
-            const accounts = await getAccountsByNICNumber(nicNumber.trim());
-            if (accounts.length === 1) {
-                // If only one account, login directly
-                await login(accounts[0].accountNumber);
-                navigate('/dashboard');
-            } else {
-                // Show account selection
-                setAvailableAccounts(accounts);
-                setShowAccountSelection(true);
-            }
-        } catch (err) {
-            setError(err.message);
-        }
-    };
-
-    const handleAccountSelect = async (accNumber) => {
-        try {
-            await login(accNumber);
+            await verifyOtpAndLogin(otpCode.trim());
             navigate('/dashboard');
         } catch (err) {
             setError(err.message);
         }
     };
 
-    const resetMobileLogin = () => {
-        setShowAccountSelection(false);
-        setAvailableAccounts([]);
-        setMobileNumber('');
+    const handleResendOtp = async () => {
         setError('');
+
+        try {
+            const otpResponse = await requestOtpForAccount(accountNumber.trim(), mobileNumber.trim());
+            setOtpTarget(otpResponse.maskedMobileNo || otpResponse.mobileNo || 'your mobile number');
+        } catch (err) {
+            setError(err.message);
+        }
     };
 
-    const resetNICLogin = () => {
-        setShowAccountSelection(false);
-        setAvailableAccounts([]);
-        setNicNumber('');
+    const resetLoginFlow = () => {
+        clearPendingOtpLogin();
+        setLoginStep('account');
+        setValidatedAccountName('');
+        setMobileNumber('');
+        setOtpCode('');
+        setOtpTarget('');
         setError('');
     };
 
@@ -134,7 +124,7 @@ const Login = () => {
             </video>
 
             {/* Dark overlay for better text readability */}
-            <div className="absolute inset-0 bg-blue-300/50 backdrop-blur-sm"></div>
+            <div className="absolute inset-0 bg-primary-600/20 "></div>
 
             <div className="max-w-md w-full relative z-10">
                 {/* Header */}
@@ -143,61 +133,20 @@ const Login = () => {
                         <img
                             src={logoImage}
                             alt="Electricity Distribution Lanka (Pvt) Ltd"
-                            className="h-24 w-auto object-contain drop-shadow-2xl"
+                            className="h-20 sm:h-24 w-auto object-contain drop-shadow-2xl"
                         />
                     </div>
-                    <h1 className="text-3xl font-bold text-white drop-shadow-lg">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white drop-shadow-lg">
                         EDL Customer Portal
                     </h1>
 
                 </div>
 
                 {/* Login Card with Gradient */}
-                <div className="bg-gradient-to-br from-white via-blue-50 to-white rounded-2xl shadow-2xl p-8 backdrop-blur-sm border border-white/50">
-                    <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-6">
-                        Sign In
+                <div className="bg-gradient-to-br from-white via-amber-50 to-white rounded-2xl shadow-2xl p-5 sm:p-8 backdrop-blur-sm border border-white/50">
+                    <h2 className="text-xl sm:text-2xl font-bold text-center bg-gradient-to-r from-primary-600 to-primary-700 bg-clip-text text-transparent mb-6">
+                        {loginStep === 'otp' ? 'Verify OTP' : loginStep === 'mobile' ? 'Enter Mobile Number' : 'Sign In'}
                     </h2>
-
-                    {/* Login Method Toggle */}
-                    <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-xl">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setLoginMethod('account');
-                                setError('');
-                                resetMobileLogin();
-                                resetNICLogin();
-                            }}
-                            className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-all duration-200 ${loginMethod === 'account'
-                                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
-                                : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                        >
-                            Account Number
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setError('Login by mobile number is currently unavailable. Please use your account number.');
-                            }}
-                            className="flex-1 py-2.5 px-4 rounded-lg font-medium transition-all duration-200 text-gray-400 cursor-not-allowed opacity-60"
-                            disabled
-                            title="Mobile login is currently unavailable"
-                        >
-                            Mobile Number
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setError('Login by NIC is currently unavailable. Please use your account number.');
-                            }}
-                            className="flex-1 py-2.5 px-4 rounded-lg font-medium transition-all duration-200 text-gray-400 cursor-not-allowed opacity-60"
-                            disabled
-                            title="NIC login is currently unavailable"
-                        >
-                            NIC
-                        </button>
-                    </div>
 
                     {error && (
                         <div className="mb-4">
@@ -205,8 +154,7 @@ const Login = () => {
                         </div>
                     )}
 
-                    {/* Account Number Login Form */}
-                    {loginMethod === 'account' && (
+                    {loginStep === 'account' && (
                         <form onSubmit={handleAccountLogin} className="space-y-5">
                             <div>
                                 <label htmlFor="accountNumber" className="block text-sm font-semibold text-gray-700 mb-2">
@@ -222,31 +170,33 @@ const Login = () => {
                                             setAccountNumber(value);
                                         }
                                     }}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
                                     placeholder="Enter 10-digit account number"
                                     maxLength="10"
                                     pattern="\d{10}"
                                     disabled={loading}
                                 />
                                 <p className="mt-1.5 text-xs text-gray-500">
-                                    Enter your 10-digit CEB account number
+                                    Enter your 10-digit account number to continue.
                                 </p>
                             </div>
 
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {loading ? 'Signing in...' : 'Sign In'}
+                                {loading ? 'Checking Account...' : 'Continue'}
                             </button>
                         </form>
                     )}
 
-                    {/* Mobile Number Login Form */}
-                    {loginMethod === 'mobile' && !showAccountSelection && (
+                    {loginStep === 'mobile' && (
                         <form onSubmit={handleMobileSubmit} className="space-y-5">
                             <div>
+                                <p className="text-sm text-gray-600 mb-3">
+                                    Account verified{validatedAccountName ? ` for ${validatedAccountName}` : ''}.
+                                </p>
                                 <label htmlFor="mobileNumber" className="block text-sm font-semibold text-gray-700 mb-2">
                                     Mobile Number
                                 </label>
@@ -254,115 +204,91 @@ const Login = () => {
                                     id="mobileNumber"
                                     type="tel"
                                     value={mobileNumber}
-                                    onChange={(e) => setMobileNumber(e.target.value)}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/\D/g, '');
+                                        if (value.length <= 12) {
+                                            setMobileNumber(value);
+                                        }
+                                    }}
+                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
                                     placeholder="07XXXXXXXX"
                                     disabled={loading}
                                 />
+                                <p className="mt-1.5 text-xs text-gray-500">
+                                    Enter the mobile number that should receive the OTP.
+                                </p>
                             </div>
 
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {loading ? 'Checking...' : 'Continue'}
-                            </button>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {loading ? 'Sending OTP...' : 'Send OTP'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={resetLoginFlow}
+                                    className="w-full bg-white border-2 border-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-xl hover:border-primary-500 hover:text-primary-700 transition-all duration-300"
+                                >
+                                    Back
+                                </button>
+                            </div>
                         </form>
                     )}
 
-                    {/* Account Selection */}
-                    {loginMethod === 'mobile' && showAccountSelection && (
-                        <div className="space-y-4">
-                            <div className="text-center mb-4">
-                                <p className="text-sm font-medium text-gray-700">Select your account</p>
-                                <p className="text-xs text-gray-500 mt-1">Mobile: {mobileNumber}</p>
-                            </div>
-
-                            <div className="space-y-3">
-                                {availableAccounts.map((account) => (
-                                    <button
-                                        key={account.accountNumber}
-                                        onClick={() => handleAccountSelect(account.accountNumber)}
-                                        disabled={loading}
-                                        className="w-full p-4 bg-white border-2 border-gray-200 hover:border-blue-500 rounded-xl text-left transition-all duration-200 hover:shadow-md disabled:opacity-50"
-                                    >
-                                        <div className="font-semibold text-gray-900">{account.customerName}</div>
-                                        <div className="text-sm text-gray-600 mt-1">{account.accountNumber}</div>
-                                        <div className="text-xs text-gray-500 mt-1">{account.address}</div>
-                                    </button>
-                                ))}
-                            </div>
-
-                            <button
-                                type="button"
-                                onClick={resetMobileLogin}
-                                className="w-full text-sm text-gray-600 hover:text-gray-900 py-2 underline"
-                            >
-                                Back
-                            </button>
-                        </div>
-                    )}
-
-                    {/* NIC Number Login Form */}
-                    {loginMethod === 'nic' && !showAccountSelection && (
-                        <form onSubmit={handleNICSubmit} className="space-y-5">
+                    {loginStep === 'otp' && (
+                        <form onSubmit={handleVerifyOtp} className="space-y-5">
                             <div>
-                                <label htmlFor="nicNumber" className="block text-sm font-semibold text-gray-700 mb-2">
-                                    NIC Number
+                                <p className="text-sm text-gray-600 mb-3">
+                                    OTP sent to <span className="font-semibold text-gray-900">{otpTarget}</span>
+                                </p>
+                                <label htmlFor="otpCode" className="block text-sm font-semibold text-gray-700 mb-2">
+                                    OTP Code
                                 </label>
                                 <input
-                                    id="nicNumber"
+                                    id="otpCode"
                                     type="text"
-                                    value={nicNumber}
-                                    onChange={(e) => setNicNumber(e.target.value)}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                                    placeholder="Enter your NIC number"
+                                    value={otpCode}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/\D/g, '');
+                                        if (value.length <= 8) {
+                                            setOtpCode(value);
+                                        }
+                                    }}
+                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                                    placeholder="Enter OTP"
                                     disabled={loading}
                                 />
                             </div>
 
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {loading ? 'Checking...' : 'Continue'}
-                            </button>
-                        </form>
-                    )}
-
-                    {/* NIC Account Selection */}
-                    {loginMethod === 'nic' && showAccountSelection && (
-                        <div className="space-y-4">
-                            <div className="text-center mb-4">
-                                <p className="text-sm font-medium text-gray-700">Select your account</p>
-                                <p className="text-xs text-gray-500 mt-1">NIC: {nicNumber}</p>
-                            </div>
-
-                            <div className="space-y-3">
-                                {availableAccounts.map((account) => (
-                                    <button
-                                        key={account.accountNumber}
-                                        onClick={() => handleAccountSelect(account.accountNumber)}
-                                        disabled={loading}
-                                        className="w-full p-4 bg-white border-2 border-gray-200 hover:border-blue-500 rounded-xl text-left transition-all duration-200 hover:shadow-md disabled:opacity-50"
-                                    >
-                                        <div className="font-semibold text-gray-900">{account.customerName}</div>
-                                        <div className="text-sm text-gray-600 mt-1">{account.accountNumber}</div>
-                                        <div className="text-xs text-gray-500 mt-1">{account.address}</div>
-                                    </button>
-                                ))}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {loading ? 'Verifying...' : 'Verify OTP'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleResendOtp}
+                                    disabled={loading}
+                                    className="w-full bg-white border-2 border-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-xl hover:border-primary-500 hover:text-primary-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Resend OTP
+                                </button>
                             </div>
 
                             <button
                                 type="button"
-                                onClick={resetNICLogin}
+                                onClick={resetLoginFlow}
                                 className="w-full text-sm text-gray-600 hover:text-gray-900 py-2 underline"
                             >
                                 Back
                             </button>
-                        </div>
+                        </form>
                     )}
                 </div>
 

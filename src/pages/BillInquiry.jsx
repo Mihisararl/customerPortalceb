@@ -43,12 +43,12 @@ const BillInquiry = () => {
                 minHeight: '160px'
             }}>
                 {/* Overlay for better text readability */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-700/60 via-blue-800/65 to-blue-900/70"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-primary-700/60 via-primary-800/65 to-primary-900/70"></div>
 
                 {/* Content */}
                 <div className="relative z-10 p-8">
                     <h1 className="text-4xl font-bold text-white drop-shadow-lg">Bill Inquiry</h1>
-                    <p className="text-blue-100 mt-3 text-lg drop-shadow">
+                    <p className="text-amber-100 mt-3 text-lg drop-shadow">
                         View and download your current and past electricity bills
                     </p>
                 </div>

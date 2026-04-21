@@ -6,7 +6,6 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import BillInquiry from './pages/BillInquiry';
 import PaymentHistory from './pages/PaymentHistory';
 import PrintBill from './pages/PrintBill';
 
@@ -30,14 +29,7 @@ function App() {
                                     </ProtectedRoute>
                                 }
                             />
-                            <Route
-                                path="/bills"
-                                element={
-                                    <ProtectedRoute>
-                                        <BillInquiry />
-                                    </ProtectedRoute>
-                                }
-                            />
+                            <Route path="/bills" element={<Navigate to="/dashboard" replace />} />
                             <Route
                                 path="/payments"
                                 element={

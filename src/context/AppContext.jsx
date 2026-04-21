@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { bills, payments, notifications } from '../data/mockData';
-import { validateAccountNumber } from '../services/cebApi';
+import { maskMobileNumber, sendLoginOtp, validateAccountNumber, validateLoginOtp } from '../services/cebApi';
 
 const AppContext = createContext();
 
@@ -17,6 +16,7 @@ export const AppProvider = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [pendingOtpLogin, setPendingOtpLogin] = useState(null);
 
     // Load saved account from localStorage on mount
     useEffect(() => {
@@ -28,20 +28,23 @@ export const AppProvider = ({ children }) => {
         }
     }, []);
 
-    // Login function - Uses real CEB API to validate account number
-    const login = async (accountNumber) => {
+    const validateAccountForLogin = async (accountNumber) => {
         setLoading(true);
         setError(null);
 
         try {
-            // Call real API to validate and get customer details
             const customerData = await validateAccountNumber(accountNumber);
 
-            setCurrentAccount(customerData);
-            setIsAuthenticated(true);
-            localStorage.setItem('currentAccount', JSON.stringify(customerData));
+            setPendingOtpLogin({
+                accountNumber: customerData.accountNumber,
+                mobileNo: '',
+            });
+
             setLoading(false);
-            return customerData;
+            return {
+                accountNumber: customerData.accountNumber,
+                customerName: customerData.customerName,
+            };
         } catch (err) {
             const errorMsg = err.message || 'Failed to validate account number';
             setError(errorMsg);
@@ -50,20 +53,86 @@ export const AppProvider = ({ children }) => {
         }
     };
 
+    const requestOtpForAccount = async (accountNumber, mobileNumber) => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const resolvedAccountNumber = pendingOtpLogin?.accountNumber || accountNumber;
+
+            if (!resolvedAccountNumber) {
+                throw new Error('Please validate account number first.');
+            }
+
+            const enteredMobile = mobileNumber?.toString().trim();
+
+            if (!enteredMobile) {
+                throw new Error('Please enter your mobile number.');
+            }
+
+            const otpResult = await sendLoginOtp(enteredMobile);
+
+            setPendingOtpLogin({
+                accountNumber: resolvedAccountNumber,
+                mobileNo: otpResult.mobileNo,
+            });
+
+            setLoading(false);
+            return {
+                mobileNo: otpResult.mobileNo,
+                maskedMobileNo: maskMobileNumber(otpResult.mobileNo),
+            };
+        } catch (err) {
+            const errorMsg = err.message || 'Failed to send OTP';
+            setError(errorMsg);
+            setLoading(false);
+            throw new Error(errorMsg);
+        }
+    };
+
+    const verifyOtpAndLogin = async (otp) => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            if (!pendingOtpLogin?.mobileNo || !pendingOtpLogin?.accountNumber) {
+                throw new Error('Please request OTP first.');
+            }
+
+            await validateLoginOtp({
+                mobileNo: pendingOtpLogin.mobileNo,
+                otp,
+            });
+
+            const customerData = await validateAccountNumber(pendingOtpLogin.accountNumber);
+
+            setCurrentAccount(customerData);
+            setIsAuthenticated(true);
+            localStorage.setItem('currentAccount', JSON.stringify(customerData));
+            setPendingOtpLogin(null);
+            setLoading(false);
+            return true;
+        } catch (err) {
+            const errorMsg = err.message || 'Failed to verify OTP';
+            setError(errorMsg);
+            setLoading(false);
+            throw new Error(errorMsg);
+        }
+    };
+
+    const clearPendingOtpLogin = () => {
+        setPendingOtpLogin(null);
+    };
+
     // Get accounts by mobile number - Not available (no API endpoint)
     const getAccountsByMobileNumber = async (mobileNumber) => {
         setLoading(true);
         setError(null);
 
-        // This feature is not available as there's no API endpoint for it
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                const errorMsg = 'Login by mobile number is not available. Please use your 10-digit account number.';
-                setError(errorMsg);
-                setLoading(false);
-                reject(new Error(errorMsg));
-            }, 500);
-        });
+        const errorMsg = 'Login by mobile number is not available. Please use account number with OTP.';
+        setError(errorMsg);
+        setLoading(false);
+        throw new Error(errorMsg);
     };
 
     // Get accounts by NIC - Not available (no API endpoint)
@@ -71,76 +140,78 @@ export const AppProvider = ({ children }) => {
         setLoading(true);
         setError(null);
 
-        // This feature is not available as there's no API endpoint for it
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                const errorMsg = 'Login by NIC is not available. Please use your 10-digit account number.';
-                setError(errorMsg);
-                setLoading(false);
-                reject(new Error(errorMsg));
-            }, 500);
-        });
+        const errorMsg = 'Login by NIC is not available. Please use account number with OTP.';
+        setError(errorMsg);
+        setLoading(false);
+        throw new Error(errorMsg);
     };
 
     // Logout function
     const logout = () => {
         setCurrentAccount(null);
         setIsAuthenticated(false);
+        setPendingOtpLogin(null);
         localStorage.removeItem('currentAccount');
     };
 
-    // Get current bills for logged-in account
-    const getCurrentBill = () => {
-        if (!currentAccount) return null;
-        const accountBills = bills[currentAccount.accountNumber] || [];
-        return accountBills.find(bill => !bill.isPaid) || accountBills[0] || null;
+    const mapRecentPaymentsToHistory = () => {
+        if (!currentAccount?.recentPayments || !Array.isArray(currentAccount.recentPayments)) {
+            return [];
+        }
+
+        return currentAccount.recentPayments
+            .map((payment, index) => {
+                const paymentDate = payment.paidDate || payment.paymentDate || payment.date || null;
+                const amount = Number(payment.paidAmount ?? payment.amount ?? 0);
+
+                return {
+                    id: payment.paymentId || payment.id || `PAY-${currentAccount.accountNumber}-${index + 1}`,
+                    billId: payment.billId || null,
+                    paymentDate,
+                    method: payment.method || 'API Payment',
+                    amount,
+                    status: payment.status || 'completed',
+                    referenceNumber: payment.referenceNumber || payment.receiptNumber || 'N/A'
+                };
+            })
+            .filter((payment) => payment.paymentDate)
+            .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
     };
+
+    // Get current bills for logged-in account
+    const getCurrentBill = () => null;
 
     // Get all bills for logged-in account
-    const getAllBills = () => {
-        if (!currentAccount) return [];
-        return bills[currentAccount.accountNumber] || [];
-    };
+    const getAllBills = () => [];
 
     // Get bill by ID
-    const getBillById = (billId) => {
-        if (!currentAccount) return null;
-        const accountBills = bills[currentAccount.accountNumber] || [];
-        return accountBills.find(bill => bill.id === billId) || null;
-    };
+    const getBillById = (billId) => null;
 
-    // Get payment history
-    const getPaymentHistory = () => {
-        if (!currentAccount) return [];
-        return payments[currentAccount.accountNumber] || [];
-    };
+    // Get Last Bill Payment
+    const getPaymentHistory = () => mapRecentPaymentsToHistory();
 
     // Get notifications
-    const getNotifications = () => {
-        if (!currentAccount) return [];
-        return notifications[currentAccount.accountNumber] || [];
-    };
+    const getNotifications = () => [];
 
     // Get last payment
     const getLastPayment = () => {
-        if (!currentAccount) return null;
-        const history = payments[currentAccount.accountNumber] || [];
+        const history = mapRecentPaymentsToHistory();
         return history.length > 0 ? history[0] : null;
     };
 
     // Check for overdue bills
-    const hasOverdueBills = () => {
-        if (!currentAccount) return false;
-        const accountBills = bills[currentAccount.accountNumber] || [];
-        return accountBills.some(bill => bill.status === 'overdue');
-    };
+    const hasOverdueBills = () => false;
 
     const value = {
         currentAccount,
         isAuthenticated,
         loading,
         error,
-        login,
+        pendingOtpLogin,
+        validateAccountForLogin,
+        requestOtpForAccount,
+        verifyOtpAndLogin,
+        clearPendingOtpLogin,
         logout,
         getAccountsByMobileNumber,
         getAccountsByNICNumber,

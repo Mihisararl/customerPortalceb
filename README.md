@@ -8,7 +8,7 @@ A modern, user-friendly React web application for viewing electricity bill infor
 - 📊 Dashboard Overview with key account information
 - 📄 Bill Inquiry (current and historical bills)
 - 🖨️ Print/Download Bill and Payment Slips (PDF)
-- 💳 Payment History with detailed records
+- 💳 Last Bill Payment with detailed records
 - 🔔 Notifications and Alerts for overdue payments
 - 📱 Fully responsive design (desktop and mobile)
 
@@ -49,12 +49,10 @@ npm run build
 npm run preview
 ```
 
-## Demo Credentials
+## Login Testing
 
-For testing, use any of these account numbers:
-- **ACC001** (Active account, current bill)
-- **ACC002** (Account with overdue payment)
-- **ACC003** (Recently paid account)
+Use a real 10-digit account number available in the connected CEB API environment.
+The login flow sends OTP to the account's registered mobile number via SharedService OTP APIs.
 
 ## Project Structure
 

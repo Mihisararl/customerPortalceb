@@ -5,16 +5,16 @@ const Footer = () => {
     const currentYear = new Date().getFullYear();
 
     return (
-        <footer className="bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800 text-white mt-auto no-print">
+        <footer className="bg-gradient-to-br from-gray-900 via-primary-900 to-gray-900 text-white mt-auto no-print">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {/* About */}
                     <div>
-                        <div className="flex items-center space-x-3 mb-4">
-                            <img src={logoImage} alt="CEB" className="h-12 w-auto object-contain drop-shadow-lg" />
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 text-center sm:text-left">
+                            <img src={logoImage} alt="EDL" className="h-12 w-auto object-contain drop-shadow-lg mx-auto sm:mx-0" />
                             <h3 className="text-lg font-semibold">Electricity Distribution Lanka (Pvt) Ltd</h3>
                         </div>
-                        <p className="text-gray-300 text-sm">
+                        <p className="text-gray-300 text-sm text-center sm:text-left">
                             Providing reliable and efficient electricity services to customers across Sri Lanka.
                         </p>
                     </div>
@@ -68,7 +68,7 @@ const Footer = () => {
                     </div>
                 </div>
 
-                <div className="border-t border-gray-700 mt-8 pt-6 text-center text-sm text-gray-400">
+                <div className="border-t border-primary-700 mt-8 pt-6 text-center text-sm text-gray-400">
                     <p>&copy; {currentYear} Electricity Distribution Lanka (Pvt) Ltd. All rights reserved.</p>
                 </div>
             </div>

@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { formatCurrency, formatDate, getStatusColor } from '../utils/helpers';
+import { buildPrintableBill, formatCurrency, formatDate, generateBillPDFPreview, getStatusColor } from '../utils/helpers';
 import BillCard from '../components/BillCard';
 import Alert from '../components/Alert';
 import PaymentModal from '../components/PaymentModal';
 import logoImage from '../assets/ceb-1.png';
-import bgImage from '../assets/ceb.jpg';
+import bgImage from '../assets/bulb.jpg';
 
 
 const Dashboard = () => {
@@ -14,15 +14,19 @@ const Dashboard = () => {
         currentAccount,
         getCurrentBill,
         getLastPayment,
+        getPaymentHistory,
         getNotifications,
         hasOverdueBills
     } = useApp();
 
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [paymentSuccess, setPaymentSuccess] = useState(false);
+    const [billPreviewUrl, setBillPreviewUrl] = useState('');
+    const [billPreviewFileName, setBillPreviewFileName] = useState('');
 
     const currentBill = getCurrentBill();
     const lastPayment = getLastPayment();
+    const paymentHistory = getPaymentHistory();
     const notifications = getNotifications();
 
     // Calculate due date from billing month (typically 20 days after billing month ends)
@@ -65,8 +69,38 @@ const Dashboard = () => {
         setTimeout(() => setPaymentSuccess(false), 5000);
     };
 
+    useEffect(() => {
+        return () => {
+            if (billPreviewUrl) {
+                URL.revokeObjectURL(billPreviewUrl);
+            }
+        };
+    }, [billPreviewUrl]);
+
+    const handlePrintCurrentBill = () => {
+        if (!currentAccount) return;
+
+        const printableBill = buildPrintableBill(currentAccount);
+        const previewData = generateBillPDFPreview(printableBill, currentAccount);
+
+        if (billPreviewUrl) {
+            URL.revokeObjectURL(billPreviewUrl);
+        }
+
+        setBillPreviewUrl(URL.createObjectURL(previewData.blob));
+        setBillPreviewFileName(previewData.fileName);
+    };
+
+    const closeBillPreview = () => {
+        if (billPreviewUrl) {
+            URL.revokeObjectURL(billPreviewUrl);
+        }
+        setBillPreviewUrl('');
+        setBillPreviewFileName('');
+    };
+
     return (
-        <div style={{
+        <div className="dashboard-page" style={{
             fontFamily: "'Outfit', 'Segoe UI', sans-serif",
             backgroundImage: `url(${bgImage})`,
             backgroundSize: 'cover',
@@ -83,11 +117,11 @@ const Dashboard = () => {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                background: 'rgba(240, 244, 248, 0.92)',
+                background: 'rgba(243, 235, 205, 0.92)',
                 zIndex: 0,
                 pointerEvents: 'none'
             }} />
-            <div style={{ position: 'relative', zIndex: 1 }}>
+            <div className="dashboard-shell" style={{ position: 'relative' }}>
 
                 {/* Google Font Import */}
                 <style>{`
@@ -149,18 +183,158 @@ const Dashboard = () => {
                 .info-row:last-child { border-bottom: none; }
                 .info-label { font-size: 13px; color: #64748b; font-weight: 500; }
                 .info-value { font-size: 14px; color: #1e293b; font-weight: 600; }
+                .dashboard-hero {
+                    background: linear-gradient(135deg, #7A0026 0%, #5C001D 60%, #4D0018 100%);
+                    border-radius: 24px;
+                    padding: 32px;
+                    margin-bottom: 24px;
+                    position: relative;
+                    overflow: hidden;
+                    box-shadow: 0 8px 32px rgba(122,0,38,0.25);
+                }
+                .dashboard-hero-main {
+                    position: relative;
+                    z-index: 1;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 24px;
+                }
+                .dashboard-account-panel {
+                    background: rgba(255,255,255,0.12);
+                    border-radius: 16px;
+                    padding: 20px 24px;
+                    backdrop-filter: blur(12px);
+                    border: 1px solid rgba(255,255,255,0.2);
+                    min-width: 280px;
+                }
+                .dashboard-overdue {
+                    background: #fff7ed;
+                    border: 1.5px solid #fed7aa;
+                    border-radius: 14px;
+                    padding: 14px 18px;
+                    margin-bottom: 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+                .dashboard-stats-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 16px;
+                    margin-bottom: 24px;
+                }
+                .dashboard-actions-head {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 16px;
+                    margin-bottom: 16px;
+                }
+                .dashboard-actions-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 18px;
+                }
+                .dashboard-section {
+                    max-width: 1200px;
+                    margin: 0 auto 24px;
+                    padding: 0 12px;
+                }
+                .dashboard-main-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 18px;
+                }
+                .dashboard-preview-header {
+                    padding: 14px 18px;
+                    border-bottom: 1px solid #e2e8f0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+                .dashboard-preview-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+                .dashboard-success-alert {
+                    position: fixed;
+                    top: 5rem;
+                    right: 1rem;
+                    z-index: 50;
+                }
+
+                @media (max-width: 1024px) {
+                    .dashboard-page {
+                        padding: 20px !important;
+                    }
+                    .dashboard-hero-main {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+                    .dashboard-account-panel {
+                        min-width: 0;
+                        width: 100%;
+                    }
+                    .dashboard-main-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+
+                @media (max-width: 767px) {
+                    .dashboard-page {
+                        padding: 14px !important;
+                        background-attachment: scroll !important;
+                    }
+                    .dashboard-hero {
+                        padding: 22px 18px;
+                        border-radius: 20px;
+                    }
+                    .dashboard-hero-main h1 {
+                        font-size: 22px !important;
+                        line-height: 1.2;
+                    }
+                    .dashboard-overdue {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+                    .dashboard-stats-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    .dashboard-actions-head {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+                    .dashboard-actions-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    .dashboard-preview-header {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+                    .dashboard-preview-actions {
+                        width: 100%;
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+                    .dashboard-preview-actions a,
+                    .dashboard-preview-actions button {
+                        width: 100%;
+                        text-align: center;
+                    }
+                    .dashboard-success-alert {
+                        left: 1rem;
+                        right: 1rem;
+                        top: auto;
+                        bottom: 1rem;
+                    }
+                }
             `}</style>
 
                 {/* ── Hero Banner ── */}
-                <div style={{
-                    background: 'linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 60%, #0ea5e9 100%)',
-                    borderRadius: '24px',
-                    padding: '32px',
-                    marginBottom: '24px',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    boxShadow: '0 8px 32px rgba(29,78,216,0.25)'
-                }}>
+                <div className="dashboard-hero">
                     {/* Background Image */}
                     <div style={{
                         position: 'absolute',
@@ -178,7 +352,7 @@ const Dashboard = () => {
                     <div style={{ position: 'absolute', bottom: -40, right: 80, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
                     <div style={{ position: 'absolute', top: 20, right: 200, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
 
-                    <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '24px' }}>
+                    <div className="dashboard-hero-main">
                         {/* Left Section - Welcome */}
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
@@ -186,7 +360,7 @@ const Dashboard = () => {
                                 <div>
                                     <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', margin: 0 }}>Electricity Distribution Lanka (Pvt) Ltd</p>
                                     <h1 style={{ color: 'white', fontSize: '26px', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>
-                                        Welcome, {currentAccount?.customerName?.split(' ')[0]}!
+                                        Welcome, {currentAccount?.customerName?.split(' ')}!
                                     </h1>
                                 </div>
                             </div>
@@ -197,21 +371,14 @@ const Dashboard = () => {
                                 <span style={{ background: 'rgba(255,255,255,0.15)', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', backdropFilter: 'blur(4px)' }}>
                                     {currentAccount?.tariff} Tariff
                                 </span>
-                                <span style={{ background: currentAccount?.status === 'active' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '12px' }}>
+                                <span style={{ background: currentAccount?.status === 'active' ? 'rgba(245, 227, 65, 0.3)' : 'rgba(248, 243, 200, 0.3)', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '12px' }}>
                                     ● {currentAccount?.status === 'active' ? 'Active' : 'Inactive'}
                                 </span>
                             </div>
                         </div>
 
                         {/* Right Section - Account Details */}
-                        <div style={{
-                            background: 'rgba(255,255,255,0.12)',
-                            borderRadius: '16px',
-                            padding: '20px 24px',
-                            backdropFilter: 'blur(12px)',
-                            border: '1px solid rgba(255,255,255,0.2)',
-                            minWidth: '280px'
-                        }}>
+                        <div className="dashboard-account-panel">
                             <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 12px' }}>Account Details</p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 <div>
@@ -233,7 +400,7 @@ const Dashboard = () => {
 
                 {/* ── Overdue Alert ── */}
                 {hasOverdueBills() && (
-                    <div style={{ background: '#fff7ed', border: '1.5px solid #fed7aa', borderRadius: '14px', padding: '14px 18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div className="dashboard-overdue">
                         <svg width="20" height="20" fill="none" stroke="#ea580c" strokeWidth="2" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                         </svg>
@@ -245,11 +412,11 @@ const Dashboard = () => {
                 )}
 
                 {/* ── 4 Stat Cards ── */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                <div className="dashboard-stats-grid">
 
                     {/* Current Bill */}
                     <div className="stat-card">
-                        <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#2563eb', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Bill</p>
+                        <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#cf1f1f', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Bill</p>
                         <p style={{ margin: 0, fontSize: '32px', fontWeight: 900, color: '#1e293b', lineHeight: '1.2' }}>
                             {currentAccount?.currentBalance ? formatCurrency(currentAccount.currentBalance) : 'N/A'}
                         </p>
@@ -258,12 +425,12 @@ const Dashboard = () => {
                                 {currentAccount.billingMonth}
                             </p>
                         )}
-                        <Link to="/bills" style={{ display: 'inline-block', marginTop: '12px', fontSize: '13px', color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>View bill →</Link>
+
                     </div>
 
                     {/* Due Date */}
                     <div className="stat-card">
-                        <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#7c3aed', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Due Date</p>
+                        <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#edc33a', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Due Date</p>
                         <p style={{ margin: 0, fontSize: '22px', fontWeight: 900, color: '#1e293b', lineHeight: '1.2' }}>
                             {dueDate ? formatDate(dueDate) : 'N/A'}
                         </p>
@@ -276,7 +443,7 @@ const Dashboard = () => {
 
                     {/* Last Payment */}
                     <div className="stat-card">
-                        <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#16a34a', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Last Payment</p>
+                        <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#2da316', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Last Payment</p>
                         <p style={{ margin: 0, fontSize: '32px', fontWeight: 900, color: '#1e293b', lineHeight: '1.2' }}>
                             {currentAccount?.lastPaymentAmount
                                 ? formatCurrency(currentAccount.lastPaymentAmount)
@@ -317,77 +484,47 @@ const Dashboard = () => {
                 </div>
 
                 {/* ── Quick Actions - Horizontal ── */}
-                <div style={{ marginBottom: '24px' }}>
-                    <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#1e293b', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ width: '4px', height: '24px', background: 'linear-gradient(135deg, #2563eb, #0ea5e9)', borderRadius: '2px' }} />
-                        Quick Actions
-                    </h2>
+                <div className="dashboard-section">
+                    <div className="dashboard-actions-head">
+                        <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+                            <div style={{ width: '4px', height: '24px', background: 'linear-gradient(135deg, #F2C200, #d9af00)', borderRadius: '2px' }} />
+                            Quick Actions
+                        </h2>
+                        <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: 600 }}>Payments and bill access</p>
+                    </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                        {/* View Bills */}
-                        <Link to="/bills" style={{ textDecoration: 'none' }}>
-                            <div style={{
-                                background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-                                borderRadius: '20px',
-                                padding: '24px',
-                                border: '2px solid #bfdbfe',
-                                transition: 'all 0.3s ease',
-                                cursor: 'pointer',
-                                height: '100%'
-                            }} className="dash-card">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-                                    <div style={{
-                                        background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                                        borderRadius: '16px',
-                                        width: '56px',
-                                        height: '56px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        boxShadow: '0 4px 12px rgba(37,99,235,0.3)'
-                                    }}>
-                                        <svg width="28" height="28" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <p style={{ margin: 0, fontWeight: 800, color: '#1e3a8a', fontSize: '18px', lineHeight: '1.3' }}>View Bills</p>
-                                        <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#3b82f6', fontWeight: 500 }}>All billing history & details</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </Link>
+                    <div className="dashboard-actions-grid">
 
-                        {/* Payment History */}
+                        {/* Last Bill Payment */}
                         <Link to="/payments" style={{ textDecoration: 'none' }}>
                             <div style={{
-                                background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                                background: 'linear-gradient(135deg, #fdf0f0 0%, #fcdcdc 100%)',
                                 borderRadius: '20px',
-                                padding: '24px',
-                                border: '2px solid #bbf7d0',
+                                padding: '26px',
+                                border: '2px solid #913434',
                                 transition: 'all 0.3s ease',
                                 cursor: 'pointer',
-                                height: '100%'
+                                height: '100%',
+                                minHeight: '138px'
                             }} className="dash-card">
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
                                     <div style={{
-                                        background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                                        background: 'linear-gradient(135deg, #a31616, #801535)',
                                         borderRadius: '16px',
                                         width: '56px',
                                         height: '56px',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        boxShadow: '0 4px 12px rgba(22,163,74,0.3)'
+                                        boxShadow: '0 4px 12px rgba(163, 22, 22, 0.3)'
                                     }}>
                                         <svg width="28" height="28" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                         </svg>
                                     </div>
                                     <div>
-                                        <p style={{ margin: 0, fontWeight: 800, color: '#14532d', fontSize: '18px', lineHeight: '1.3' }}>Payment History</p>
-                                        <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#22c55e', fontWeight: 500 }}>View past transactions</p>
+                                        <p style={{ margin: 0, fontWeight: 800, color: '#531414', fontSize: '18px', lineHeight: '1.3' }}>Last Bill Payment</p>
+                                        <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#c52222', fontWeight: 600 }}>View live payment transactions from the account</p>
                                     </div>
                                 </div>
                             </div>
@@ -398,7 +535,7 @@ const Dashboard = () => {
                             <div
                                 onClick={() => setShowPaymentModal(true)}
                                 style={{
-                                    background: 'linear-gradient(135deg, #0A2540 0%, #0052CC 100%)',
+                                    background: 'linear-gradient(135deg, #7A0026 0%, #5C001D 100%)',
                                     borderRadius: '20px',
                                     padding: '24px',
                                     border: '2px solid #0ec8e9',
@@ -437,19 +574,24 @@ const Dashboard = () => {
                                 </div>
                             </div>
                         ) : (
-                            <Link to="/bills" style={{ textDecoration: 'none' }}>
+                            <button
+                                type="button"
+                                onClick={handlePrintCurrentBill}
+                                style={{ textDecoration: 'none', border: 'none', padding: 0, background: 'transparent', width: '100%', textAlign: 'left' }}
+                            >
                                 <div style={{
-                                    background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                                    background: 'linear-gradient(135deg, #fffef7 0%, #fffaeb 100%)',
                                     borderRadius: '20px',
-                                    padding: '24px',
+                                    padding: '26px',
                                     border: '2px solid #fcd34d',
                                     transition: 'all 0.3s ease',
                                     cursor: 'pointer',
-                                    height: '100%'
+                                    height: '100%',
+                                    minHeight: '138px'
                                 }} className="dash-card">
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
                                         <div style={{
-                                            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                            background: 'linear-gradient(135deg, #F2C200, #d9af00)',
                                             borderRadius: '16px',
                                             width: '56px',
                                             height: '56px',
@@ -464,113 +606,60 @@ const Dashboard = () => {
                                         </div>
                                         <div>
                                             <p style={{ margin: 0, fontWeight: 800, color: '#78350f', fontSize: '18px', lineHeight: '1.3' }}>Print Bill</p>
-                                            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#d97706', fontWeight: 500 }}>Download or print bills</p>
+                                            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#d97706', fontWeight: 600 }}>Preview and download the current bill PDF</p>
                                         </div>
                                     </div>
                                 </div>
-                            </Link>
+                            </button>
                         )}
                     </div>
                 </div>
 
                 {/* ── Main Grid ── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px', maxWidth: '1200px', margin: '0 auto 24px' }}>
+                <div className="dashboard-section">
+                    <div className="dashboard-main-grid">
 
-                    {/* Billing Details */}
-                    <div className="dash-card">
-                        <p className="section-title">
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                                Last Billing Details
-                            </span>
-                        </p>
-                        {currentBill ? (
-                            <>
-                                <div className="info-row">
-                                    <span className="info-label">Billing Days</span>
-                                    <span className="info-value">{currentBill.days ?? 'N/A'} days</span>
-                                </div>
-                                <div className="info-row">
-                                    <span className="info-label">Units Consumed</span>
-                                    <span className="info-value">{currentBill.units ?? 'N/A'} kWh</span>
-                                </div>
-                                <div className="info-row">
-                                    <span className="info-label">KWH Charge</span>
-                                    <span className="info-value">{formatCurrency(currentBill.kwhCharge ?? currentBill.energyCharge ?? 0)}</span>
-                                </div>
-                                <div className="info-row">
-                                    <span className="info-label">SSCL</span>
-                                    <span className="info-value">{formatCurrency(currentBill.sscl ?? 0)}</span>
-                                </div>
-                                <div className="info-row">
-                                    <span className="info-label">Interest</span>
-                                    <span className="info-value">{formatCurrency(currentBill.interest ?? 0)}</span>
-                                </div>
-                                <div className="info-row" style={{ borderBottom: 'none', paddingTop: '14px', marginTop: '4px', borderTop: '2px solid #e2e8f0' }}>
-                                    <span style={{ fontWeight: 700, color: '#1e293b', fontSize: '15px' }}>Total Amount</span>
-                                    <span style={{ fontWeight: 800, color: '#1d4ed8', fontSize: '18px' }}>{formatCurrency(currentBill.totalAmount)}</span>
-                                </div>
-                                <div className="info-row">
-                                    <span className="info-label">A/C Balance</span>
-                                    <span style={{ fontWeight: 700, color: currentBill.balance > 0 ? '#dc2626' : '#16a34a', fontSize: '15px' }}>
-                                        {formatCurrency(currentBill.balance ?? currentBill.totalAmount)}
-                                    </span>
-                                </div>
-                            </>
-                        ) : (
-                            <p style={{ color: '#94a3b8', textAlign: 'center', padding: '32px 0' }}>No billing data available</p>
-                        )}
-                    </div>
+                        {/* Billing Details */}
+                        <div className="dash-card">
+                            <p className="section-title">
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                    Last Billing Details
+                                </span>
+                            </p>
 
-                    {/* Meter Readings */}
-                    <div className="dash-card">
-                        <p className="section-title">
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                                Meter Readings
-                            </span>
-                        </p>
+                            {paymentHistory.length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {paymentHistory.map((payment) => (
+                                        <div key={payment.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: '#fdf0f9', borderRadius: '10px' }}>
+                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#a38216', flexShrink: 0 }} />
+                                            <span style={{ fontSize: '13px', color: '#282f3a', flex: 1 }}>{formatDate(payment.paymentDate)}</span>
+                                            <span style={{ fontWeight: 700, color: '#a38216', fontSize: '14px' }}>{formatCurrency(payment.amount)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p style={{ color: '#94a3b8', fontSize: '13px' }}>No payments available</p>
+                            )}
+                        </div>
 
-                        {/* Visual meter bar */}
-                        {currentBill && (
-                            <div style={{ background: '#f8fafc', borderRadius: '14px', padding: '18px', marginBottom: '16px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                    <div style={{ textAlign: 'center' }}>
-                                        <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>PREVIOUS</p>
-                                        <p style={{ margin: '4px 0 2px', fontSize: '22px', fontWeight: 800, color: '#475569' }}>{currentBill.previousReading ?? 'N/A'}</p>
-                                        <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>{currentBill.previousReadingDate ? formatDate(currentBill.previousReadingDate) : ''}</p>
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                                        <svg width="28" height="28" fill="none" stroke="#cbd5e1" strokeWidth="1.5" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                        </svg>
-                                        <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', fontWeight: 700 }}>
-                                            +{currentBill.units ?? '—'} kWh
-                                        </span>
-                                    </div>
-                                    <div style={{ textAlign: 'center' }}>
-                                        <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8', fontWeight: 600 }}>LATEST</p>
-                                        <p style={{ margin: '4px 0 2px', fontSize: '22px', fontWeight: 800, color: '#1d4ed8' }}>{currentBill.currentReading ?? 'N/A'}</p>
-                                        <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>{currentBill.currentReadingDate ? formatDate(currentBill.currentReadingDate) : ''}</p>
-                                    </div>
-                                </div>
-                                <div style={{ height: '6px', background: '#e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
-                                    <div style={{ height: '100%', width: '65%', background: 'linear-gradient(90deg, #7c3aed, #2563eb)', borderRadius: '10px' }} />
-                                </div>
-                            </div>
-                        )}
+                        {/* Meter Readings */}
+                        <div className="dash-card">
+                            <p className="section-title">
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                    Meter Readings
+                                </span>
+                            </p>
 
-                        {/* Payment history */}
-                        <p style={{ fontSize: '13px', fontWeight: 700, color: '#475569', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Recent Payments</p>
-                        {lastPayment ? (
-                            <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: '#f0fdf4', borderRadius: '10px', marginBottom: '8px' }}>
-                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16a34a', flexShrink: 0 }} />
-                                    <span style={{ fontSize: '13px', color: '#374151', flex: 1 }}>{formatDate(lastPayment.paymentDate)}</span>
-                                    <span style={{ fontWeight: 700, color: '#16a34a', fontSize: '14px' }}>{formatCurrency(lastPayment.amount)}</span>
+                            {currentAccount?.units ? (
+                                <div className="info-row">
+                                    <span className="info-label">Units Used</span>
+                                    <span className="info-value">{currentAccount.units} kWh</span>
                                 </div>
-                            </div>
-                        ) : (
-                            <p style={{ color: '#94a3b8', fontSize: '13px' }}>No payment history</p>
-                        )}
+                            ) : (
+                                <p style={{ color: '#94a3b8', fontSize: '13px' }}>No meter readings available</p>
+                            )}
+
+                        </div>
                     </div>
                 </div>
 
@@ -588,7 +677,7 @@ const Dashboard = () => {
 
                 {/* Payment Success Alert */}
                 {paymentSuccess && (
-                    <div className="fixed top-20 right-4 z-50 animate-fadeIn">
+                    <div className="dashboard-success-alert animate-fadeIn">
                         <div className="bg-green-50 border-2 border-green-500 rounded-xl shadow-xl p-4 max-w-md">
                             <div className="flex items-start">
                                 <div className="flex-shrink-0">
@@ -623,6 +712,72 @@ const Dashboard = () => {
                         bill={currentBill}
                         onPaymentSuccess={handlePaymentSuccess}
                     />
+                )}
+
+                {billPreviewUrl && (
+                    <div style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(15, 23, 42, 0.65)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 99999,
+                        padding: '20px'
+                    }}>
+                        <div style={{
+                            background: '#ffffff',
+                            borderRadius: '16px',
+                            width: 'min(980px, 100%)',
+                            height: 'min(90vh, 860px)',
+                            boxShadow: '0 24px 60px rgba(15, 23, 42, 0.35)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            overflow: 'hidden'
+                        }}>
+                            <div className="dashboard-preview-header">
+                                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#1e293b' }}>Bill Preview</h3>
+                                <div className="dashboard-preview-actions">
+                                    <a
+                                        href={billPreviewUrl}
+                                        download={billPreviewFileName || 'CEB_Bill.pdf'}
+                                        style={{
+                                            background: 'linear-gradient(135deg, #7A0026, #5C001D)',
+                                            color: '#fff',
+                                            textDecoration: 'none',
+                                            borderRadius: '10px',
+                                            padding: '9px 16px',
+                                            fontSize: '14px',
+                                            fontWeight: 700
+                                        }}
+                                    >
+                                        Download PDF
+                                    </a>
+                                    <button
+                                        type="button"
+                                        onClick={closeBillPreview}
+                                        style={{
+                                            border: '1px solid #cbd5e1',
+                                            background: '#fff',
+                                            color: '#334155',
+                                            borderRadius: '10px',
+                                            padding: '9px 16px',
+                                            fontSize: '14px',
+                                            fontWeight: 600,
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                            <iframe
+                                title="Bill PDF Preview"
+                                src={billPreviewUrl}
+                                style={{ border: 'none', width: '100%', height: '100%', background: '#f8fafc' }}
+                            />
+                        </div>
+                    </div>
                 )}
             </div>
         </div>

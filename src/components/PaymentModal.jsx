@@ -47,25 +47,25 @@ const PaymentModal = ({ isOpen, onClose, bill, onPaymentSuccess }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center pt-20 pb-8 px-4 overflow-y-auto">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start sm:items-center justify-center pt-6 sm:pt-20 pb-6 sm:pb-8 px-3 sm:px-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] sm:max-h-[85vh] overflow-y-auto">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-6 rounded-t-2xl">
-                    <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-3">
+                <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-4 sm:p-6 rounded-t-2xl">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
+                        <div className="flex items-start sm:items-center gap-3 min-w-0">
                             <img
                                 src={cebLogo}
                                 alt="CEB Logo"
-                                className="w-12 h-12 object-contain"
+                                className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
                             />
-                            <div>
-                                <h2 className="text-2xl font-bold text-white">Electricity Distribution Lanka (Pvt) Ltd</h2>
-                                <p className="text-blue-100 mt-1">Customer Bill Statement</p>
+                            <div className="min-w-0">
+                                <h2 className="text-lg sm:text-2xl font-bold text-white leading-tight">Electricity Distribution Lanka (Pvt) Ltd</h2>
+                                <p className="text-sm sm:text-base text-amber-100 mt-1">Customer Bill Statement</p>
                             </div>
                         </div>
                         <button
                             onClick={onClose}
-                            className="text-white hover:bg-white/20 rounded-lg p-2 transition"
+                            className="self-end sm:self-auto text-white hover:bg-white/20 rounded-lg p-2 transition"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -75,31 +75,31 @@ const PaymentModal = ({ isOpen, onClose, bill, onPaymentSuccess }) => {
 
                     {/* Bill Summary */}
                     <div className="mt-4 bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                        <div className="flex justify-between text-white">
+                        <div className="flex items-start justify-between gap-4 text-white">
                             <span className="text-sm opacity-90">Bill Period:</span>
-                            <span className="font-semibold">{bill.billingPeriod}</span>
+                            <span className="font-semibold text-right">{bill.billingPeriod}</span>
                         </div>
-                        <div className="flex justify-between text-white mt-2">
+                        <div className="flex items-start justify-between gap-4 text-white mt-2">
                             <span className="text-sm opacity-90">Amount to Pay:</span>
-                            <span className="text-2xl font-bold">{formatCurrency(bill.totalAmount)}</span>
+                            <span className="text-xl sm:text-2xl font-bold text-right">{formatCurrency(bill.totalAmount)}</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                     {/* Payment Method Selection */}
                     {!paymentMethod ? (
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Payment Method</h3>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {paymentMethods.map((method) => (
                                     <button
                                         key={method.id}
                                         onClick={() => setPaymentMethod(method.id)}
-                                        className="p-6 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 group"
+                                        className="p-5 sm:p-6 border-2 border-gray-200 rounded-xl hover:border-primary-500 hover:bg-amber-50 transition-all duration-200 group"
                                     >
                                         <div className="text-4xl mb-2">{method.icon}</div>
-                                        <div className="font-semibold text-gray-900 group-hover:text-blue-600">
+                                        <div className="font-semibold text-gray-900 group-hover:text-primary-600">
                                             {method.name}
                                         </div>
                                     </button>
@@ -111,7 +111,7 @@ const PaymentModal = ({ isOpen, onClose, bill, onPaymentSuccess }) => {
                             {/* Back Button */}
                             <button
                                 onClick={() => setPaymentMethod('')}
-                                className="text-blue-600 hover:text-blue-700 font-medium mb-4 flex items-center"
+                                className="text-primary-600 hover:text-primary-700 font-medium mb-4 flex items-center"
                             >
                                 <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -138,7 +138,7 @@ const PaymentModal = ({ isOpen, onClose, bill, onPaymentSuccess }) => {
                                                 placeholder="1234 5678 9012 3456"
                                                 maxLength="19"
                                                 required
-                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                             />
                                         </div>
                                         <div>
@@ -152,10 +152,10 @@ const PaymentModal = ({ isOpen, onClose, bill, onPaymentSuccess }) => {
                                                 onChange={handleInputChange}
                                                 placeholder="John Doe"
                                                 required
-                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                             />
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                                     Expiry Date
@@ -168,7 +168,7 @@ const PaymentModal = ({ isOpen, onClose, bill, onPaymentSuccess }) => {
                                                     placeholder="MM/YY"
                                                     maxLength="5"
                                                     required
-                                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                                 />
                                             </div>
                                             <div>
@@ -183,7 +183,7 @@ const PaymentModal = ({ isOpen, onClose, bill, onPaymentSuccess }) => {
                                                     placeholder="123"
                                                     maxLength="4"
                                                     required
-                                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                                 />
                                             </div>
                                         </div>
@@ -202,7 +202,7 @@ const PaymentModal = ({ isOpen, onClose, bill, onPaymentSuccess }) => {
                                                 value={paymentDetails.bankName}
                                                 onChange={handleInputChange}
                                                 required
-                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                             >
                                                 <option value="">Choose your bank</option>
                                                 <option value="Bank of Ceylon">Bank of Ceylon</option>
@@ -223,7 +223,7 @@ const PaymentModal = ({ isOpen, onClose, bill, onPaymentSuccess }) => {
                                                 onChange={handleInputChange}
                                                 placeholder="Enter your account number"
                                                 required
-                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                             />
                                         </div>
                                     </div>
@@ -243,11 +243,11 @@ const PaymentModal = ({ isOpen, onClose, bill, onPaymentSuccess }) => {
                                                 onChange={handleInputChange}
                                                 placeholder="07X XXX XXXX"
                                                 required
-                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                             />
                                         </div>
-                                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                                            <p className="text-sm text-blue-800">
+                                        <div className="bg-amber-50 border border-accent-200 rounded-xl p-4">
+                                            <p className="text-sm text-primary-800">
                                                 📱 You will receive an OTP on your mobile number to confirm the payment.
                                             </p>
                                         </div>
@@ -255,7 +255,7 @@ const PaymentModal = ({ isOpen, onClose, bill, onPaymentSuccess }) => {
                                 )}
 
                                 {/* Payment Button */}
-                                <div className="mt-6 flex gap-3">
+                                <div className="mt-6 flex flex-col-reverse sm:flex-row gap-3">
                                     <button
                                         type="button"
                                         onClick={onClose}
@@ -266,7 +266,7 @@ const PaymentModal = ({ isOpen, onClose, bill, onPaymentSuccess }) => {
                                     <button
                                         type="submit"
                                         disabled={isProcessing}
-                                        className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-cyan-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="flex-1 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white font-semibold rounded-xl hover:from-primary-700 hover:to-primary-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {isProcessing ? (
                                             <span className="flex items-center justify-center">

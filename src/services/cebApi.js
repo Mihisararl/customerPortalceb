@@ -8,6 +8,9 @@
 const API_BASE_URL = '';
 const API_ENDPOINT = '/api/customer/CEBCustomer_CurrantBalance';
 const API_LOGIN_ENDPOINT = '/api/Auth/login';
+const OTP_SEND_ENDPOINT = '/shared-api/api/otp/sendOtp';
+const OTP_VALIDATE_ENDPOINT = '/shared-api/api/otp/validateOtp';
+const OTP_SYSTEM_CODE = 'smc';
 
 // API Authentication Configuration
 const API_CREDENTIALS = {
@@ -17,6 +20,130 @@ const API_CREDENTIALS = {
 
 // Store JWT token in memory
 let cachedToken = null;
+
+const parseOtpApiResponse = async (response) => {
+    const rawText = await response.text();
+
+    if (!rawText) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(rawText);
+    } catch {
+        const numericValue = Number(rawText);
+        return Number.isNaN(numericValue) ? rawText : numericValue;
+    }
+};
+
+const normalizeMobileNumber = (value) => {
+    if (!value) {
+        return '';
+    }
+
+    const digitsOnly = value.toString().replace(/\D/g, '');
+
+    if (digitsOnly.length === 10) {
+        return digitsOnly;
+    }
+
+    if (digitsOnly.length === 11 && digitsOnly.startsWith('0')) {
+        return digitsOnly.slice(0, 10);
+    }
+
+    if (digitsOnly.length === 12 && digitsOnly.startsWith('94')) {
+        return `0${digitsOnly.slice(2)}`;
+    }
+
+    return '';
+};
+
+export const maskMobileNumber = (mobileNo) => {
+    const normalized = normalizeMobileNumber(mobileNo);
+    if (!normalized) {
+        return '';
+    }
+
+    return `${normalized.slice(0, 3)}***${normalized.slice(-3)}`;
+};
+
+export const sendLoginOtp = async (mobileNo) => {
+    const normalizedMobileNo = normalizeMobileNumber(mobileNo);
+
+    if (!normalizedMobileNo) {
+        throw new Error('Registered mobile number is invalid for OTP delivery.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}${OTP_SEND_ENDPOINT}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            mobileNo: normalizedMobileNo,
+            systemCode: OTP_SYSTEM_CODE,
+        }),
+    });
+
+    const result = await parseOtpApiResponse(response);
+
+    if (!response.ok) {
+        if (response.status === 404) {
+            throw new Error('OTP API endpoint was not found (404). Please verify the OTP service URL with the backend team.');
+        }
+
+        throw new Error('Failed to send OTP. Please try again.');
+    }
+
+    if (result === -1) {
+        throw new Error('OTP service rejected the request. Please try again later.');
+    }
+
+    return {
+        mobileNo: normalizedMobileNo,
+        result,
+    };
+};
+
+export const validateLoginOtp = async ({ mobileNo, otp }) => {
+    const normalizedMobileNo = normalizeMobileNumber(mobileNo);
+    const normalizedOtp = otp?.toString().trim();
+
+    if (!normalizedMobileNo) {
+        throw new Error('Registered mobile number is invalid.');
+    }
+
+    if (!normalizedOtp || !/^\d{4,8}$/.test(normalizedOtp)) {
+        throw new Error('Enter a valid OTP.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}${OTP_VALIDATE_ENDPOINT}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            mobileNo: normalizedMobileNo,
+            otp: Number(normalizedOtp),
+        }),
+    });
+
+    const result = await parseOtpApiResponse(response);
+
+    if (!response.ok) {
+        if (response.status === 404) {
+            throw new Error('OTP validation API endpoint was not found (404). Please verify the OTP service URL with the backend team.');
+        }
+
+        throw new Error('Failed to validate OTP. Please try again.');
+    }
+
+    if (result === -1 || result === false || result === 'false' || result === 0) {
+        throw new Error('Invalid OTP. Please try again.');
+    }
+
+    return true;
+};
 
 /**
  * Login to API and retrieve JWT Bearer token
@@ -176,7 +303,12 @@ export const validateAccountNumber = async (accountNumber) => {
             status: 'active',
             // For compatibility with existing code
             email: '', // Not provided by API
-            phone: '', // Not provided by API
+            phone: data.cebCustomerData.mobileNo ||
+                data.cebCustomerData.mobileNumber ||
+                data.cebCustomerData.telephone ||
+                data.cebCustomerData.phone ||
+                data.cebCustomerData.contactNo ||
+                '',
         };
 
     } catch (error) {

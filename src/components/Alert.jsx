@@ -21,10 +21,10 @@ const Alert = ({ type = 'info', title, message, onClose }) => {
             message: 'text-yellow-700'
         },
         info: {
-            container: 'bg-blue-50 border-blue-200',
-            icon: 'text-blue-600',
-            title: 'text-blue-800',
-            message: 'text-blue-700'
+            container: 'bg-amber-50 border-accent-200',
+            icon: 'text-primary-600',
+            title: 'text-primary-800',
+            message: 'text-primary-700'
         }
     };
 

@@ -4,7 +4,7 @@
 
 @layer base {
     body {
-        @apply bg-gradient-to-br from-gray-50 via-blue-50 to-gray-50 text-gray-900;
+        @apply bg-gradient-to-br from-gray-50 via-amber-50 to-gray-50 text-gray-900;
         background-attachment: fixed;
     }
 }
@@ -20,7 +20,7 @@
     }
 
     .btn-primary {
-        @apply bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 px-5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:scale-105;
+        @apply bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold py-2.5 px-5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:scale-105;
     }
 
     .btn-secondary {
@@ -28,7 +28,7 @@
     }
 
     .input-field {
-        @apply w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200;
+        @apply w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-500/20 focus:border-primary-500 transition-all duration-200;
     }
 
     .page-container {

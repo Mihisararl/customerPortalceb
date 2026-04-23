@@ -27,7 +27,7 @@ const PaymentHistory = () => {
         const m = method?.toLowerCase();
         if (m === 'online banking') return { bg: 'rgba(253, 236, 88, 0.23)', color: '#557a00' };
         if (m === 'credit card') return { bg: 'rgba(253, 236, 88, 0.23)', color: '#557a00' };
-        if (m === 'cash') return { bg: 'rgba(253, 236, 88, 0.23)', color: '#557a00'};
+        if (m === 'cash') return { bg: 'rgba(253, 236, 88, 0.23)', color: '#557a00' };
         if (m === 'api payment') return { bg: 'rgba(253, 236, 88, 0.23)', color: '#557a00' };
         return { bg: 'rgba(253, 236, 88, 0.23)', color: '#557a00' };
     };
@@ -552,7 +552,12 @@ const PaymentHistory = () => {
 
                     {/* Section Label */}
                     <div className="ph-section-head">
-                        <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>Payment Transactions</p>
+                        <div>
+                            <p style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#1e293b' }}>Payment Transactions</p>
+                            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b', fontWeight: 500 }}>
+                                <span style={{ color: '#16a34a', fontWeight: 700 }}>( Noted: Un-Accounted Payment Details Are Subject To Be Confirmed. ) </span>
+                            </p>
+                        </div>
                         <span style={{ fontSize: '13px', color: '#64748b', background: 'white', border: '1.5px solid #eef0f4', borderRadius: '100px', padding: '4px 14px', fontWeight: 500 }}>
                             {payments.length} records
                         </span>
@@ -596,7 +601,6 @@ const PaymentHistory = () => {
                                         {/* Date */}
                                         <div className="pay-meta">
                                             <p style={{ margin: 0, fontSize: '14px', color: '#1e293b', fontWeight: 600 }}>{formatDate(payment.paymentDate)}</p>
-                                            <p className="ref-text">Ref: {payment.referenceNumber || '—'}</p>
                                         </div>
 
                                         {/* Method */}

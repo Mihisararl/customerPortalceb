@@ -6,7 +6,6 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import PaymentHistory from './pages/PaymentHistory';
 import PrintBill from './pages/PrintBill';
 
 function App() {
@@ -30,14 +29,7 @@ function App() {
                                 }
                             />
                             <Route path="/bills" element={<Navigate to="/dashboard" replace />} />
-                            <Route
-                                path="/payments"
-                                element={
-                                    <ProtectedRoute>
-                                        <PaymentHistory />
-                                    </ProtectedRoute>
-                                }
-                            />
+                            <Route path="/payments" element={<Navigate to="/dashboard" replace />} />
                             <Route
                                 path="/print-bill/:billId"
                                 element={

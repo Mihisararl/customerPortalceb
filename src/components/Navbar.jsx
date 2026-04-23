@@ -1,21 +1,11 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import logoImage from '../assets/ceb-1.png';
 
 const Navbar = () => {
     const { isAuthenticated, currentAccount, logout } = useApp();
-    const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-    const isActive = (path) => {
-        return location.pathname === path;
-    };
-
-    const navLinks = [
-        { name: 'Home', path: '/dashboard' },
-        { name: 'Last Bill Payment', path: '/payments' },
-    ];
 
     if (!isAuthenticated) {
         return null;
@@ -41,28 +31,11 @@ const Navbar = () => {
                         </Link>
                     </div>
 
-                    {/* Desktop Navigation */}
-                    <div className="hidden md:flex md:items-center md:space-x-2">
-                        {navLinks.map((link) => (
-                            <Link
-                                key={link.path}
-                                to={link.path}
-                                className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${isActive(link.path)
-                                    ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md'
-                                    : 'text-gray-700 hover:bg-amber-50 hover:text-primary-600'
-                                    }`}
-                            >
-                                {link.name}
-                            </Link>
-                        ))}
-                        
-                    </div>
-
                     {/* Logout Button */}
                     <div className="hidden md:flex md:items-center">
                         <button
                             onClick={logout}
-                            className="inline-flex items-center px-5 py-2 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-[#6B7280] to-[#4B5563] hover:from-[#4B5563] hover:to-[#374151] transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-105"
+                            className="inline-flex items-center px-5 py-2 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-primary-500 to-primary-600 transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-105"
                         >
                             Logout
                         </button>
@@ -104,21 +77,6 @@ const Navbar = () => {
             {/* Mobile menu */}
             {isMobileMenuOpen && (
                 <div className="md:hidden border-t-2 border-accent-200 bg-gradient-to-br from-white to-amber-50">
-                    <div className="px-2 pt-2 pb-3 space-y-2">
-                        {navLinks.map((link) => (
-                            <Link
-                                key={link.path}
-                                to={link.path}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className={`block px-4 py-3 rounded-xl text-base font-semibold transition-all duration-300 ${isActive(link.path)
-                                    ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md'
-                                    : 'text-gray-700 hover:bg-amber-50 hover:text-primary-600'
-                                    }`}
-                            >
-                                {link.name}
-                            </Link>
-                        ))}
-                    </div>
                     <div className="pt-4 pb-3 border-t-2 border-accent-200">
                         <div className="px-4 mb-3">
                             <p className="text-base font-semibold text-gray-900">
@@ -134,7 +92,7 @@ const Navbar = () => {
                                     logout();
                                     setIsMobileMenuOpen(false);
                                 }}
-                                className="w-full text-left px-4 py-3 rounded-xl text-base font-semibold text-white bg-gradient-to-r from-[#6B7280] to-[#4B5563] hover:from-[#4B5563] hover:to-[#374151] shadow-md transition-all duration-300"
+                                className="w-full text-left px-4 py-3 rounded-xl text-base font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-600 shadow-md transition-all duration-300"
                             >
                                 Logout
                             </button>

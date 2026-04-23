@@ -1,34 +1,55 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { buildPrintableBill, formatCurrency, formatDate, generateBillPDFPreview, getStatusColor } from '../utils/helpers';
-import BillCard from '../components/BillCard';
+import { formatCurrency, formatDate } from '../utils/helpers';
 import Alert from '../components/Alert';
-import PaymentModal from '../components/PaymentModal';
-import logoImage from '../assets/ceb-1.png';
 import bgImage from '../assets/bulb.jpg';
 
 
 const Dashboard = () => {
     const {
         currentAccount,
-        getCurrentBill,
         getLastPayment,
-        getPaymentHistory,
         getNotifications,
         hasOverdueBills
     } = useApp();
 
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [paymentSuccess, setPaymentSuccess] = useState(false);
-    const [billPreviewUrl, setBillPreviewUrl] = useState('');
-    const [billPreviewFileName, setBillPreviewFileName] = useState('');
 
-    const currentBill = getCurrentBill();
+
+    const formatWelcomeName = (name) => {
+        if (!name) return 'Customer';
+
+        const normalizedName = name.trim().replace(/\s+/g, ' ');
+        const parts = normalizedName.split(' ');
+
+        if (parts.length > 1) {
+            const lastName = parts[parts.length - 1];
+            const firstParts = parts
+                .slice(0, -1)
+                .map((part) => (/^[A-Z]{2,}$/.test(part) ? part.split('').join(' ') : part));
+
+            return [...firstParts, lastName].join(' ');
+        }
+
+        if (/^[A-Z]{7,}$/.test(normalizedName)) {
+            // Handle compact uppercase names like MWGHTKJAYASEKARA.
+            const initialsLength = Math.min(6, Math.max(2, normalizedName.length - 9));
+            const initials = normalizedName.slice(0, initialsLength).split('').join(' ');
+            const lastName = normalizedName.slice(initialsLength);
+            return lastName ? `${initials} ${lastName}` : initials;
+        }
+
+        return normalizedName;
+    };
+
     const lastPayment = getLastPayment();
-    const paymentHistory = getPaymentHistory();
+    const paymentHistory = currentAccount?.recentPayments && currentAccount.recentPayments.length > 0
+        ? currentAccount.recentPayments
+        : (lastPayment ? [lastPayment] : []);
     const notifications = getNotifications();
-
+    const totalPaymentAmount = paymentHistory.reduce(
+        (sum, payment) => sum + Number(payment.paidAmount ?? payment.amount ?? 0),
+        0
+    );
     // Calculate due date from billing month (typically 20 days after billing month ends)
     const calculateDueDate = (billingMonth) => {
         if (!billingMonth) return null;
@@ -56,48 +77,6 @@ const Dashboard = () => {
     };
 
     const dueDate = currentAccount?.billingMonth ? calculateDueDate(currentAccount.billingMonth) : null;
-
-    // Get last payment from API data if available
-    const lastPaymentFromAPI = currentAccount?.recentPayments && currentAccount.recentPayments.length > 0
-        ? currentAccount.recentPayments[0]
-        : null;
-
-    const handlePaymentSuccess = (paymentInfo) => {
-        setShowPaymentModal(false);
-        setPaymentSuccess(true);
-        // Hide success message after 5 seconds
-        setTimeout(() => setPaymentSuccess(false), 5000);
-    };
-
-    useEffect(() => {
-        return () => {
-            if (billPreviewUrl) {
-                URL.revokeObjectURL(billPreviewUrl);
-            }
-        };
-    }, [billPreviewUrl]);
-
-    const handlePrintCurrentBill = () => {
-        if (!currentAccount) return;
-
-        const printableBill = buildPrintableBill(currentAccount);
-        const previewData = generateBillPDFPreview(printableBill, currentAccount);
-
-        if (billPreviewUrl) {
-            URL.revokeObjectURL(billPreviewUrl);
-        }
-
-        setBillPreviewUrl(URL.createObjectURL(previewData.blob));
-        setBillPreviewFileName(previewData.fileName);
-    };
-
-    const closeBillPreview = () => {
-        if (billPreviewUrl) {
-            URL.revokeObjectURL(billPreviewUrl);
-        }
-        setBillPreviewUrl('');
-        setBillPreviewFileName('');
-    };
 
     return (
         <div className="dashboard-page" style={{
@@ -220,26 +199,74 @@ const Dashboard = () => {
                 }
                 .dashboard-stats-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
                     gap: 16px;
                     margin-bottom: 24px;
-                }
-                .dashboard-actions-head {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    gap: 16px;
-                    margin-bottom: 16px;
-                }
-                .dashboard-actions-grid {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 18px;
                 }
                 .dashboard-section {
                     max-width: 1200px;
                     margin: 0 auto 24px;
                     padding: 0 12px;
+                }
+                .last-payment-card {
+                    cursor: pointer;
+                }
+                .last-payment-toggle {
+                    margin-top: 10px;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    font-size: 12px;
+                    color: #166534;
+                    font-weight: 700;
+                }
+                .last-payment-details {
+                    margin-top: 12px;
+                    padding-top: 12px;
+                    border-top: 1px solid #dcfce7;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                .payment-transactions {
+                    background: #fff;
+                    border: 1.5px solid #eef0f4;
+                    border-radius: 18px;
+                    overflow: hidden;
+                    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+                    margin-bottom: 24px;
+                }
+                .payment-transactions-head {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 16px 20px;
+                    border-bottom: 1px solid #eef0f4;
+                    background: #f8fafc;
+                }
+                .payment-transactions-grid {
+                    display: grid;
+                    grid-template-columns: 1.2fr 1fr 1fr;
+                    gap: 12px;
+                    padding: 12px 20px;
+                }
+                .payment-transactions-grid.head {
+                    font-size: 12px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.6px;
+                    color: #64748b;
+                    border-bottom: 1px solid #eef0f4;
+                    background: #ffffff;
+                }
+                .payment-transactions-row {
+                    font-size: 14px;
+                    color: #1e293b;
+                    font-weight: 600;
+                    border-bottom: 1px solid #f1f5f9;
+                }
+                .payment-transactions-row:last-child {
+                    border-bottom: none;
                 }
                 .dashboard-main-grid {
                     display: grid;
@@ -281,6 +308,9 @@ const Dashboard = () => {
                     .dashboard-main-grid {
                         grid-template-columns: 1fr;
                     }
+                    .dashboard-stats-grid {
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                    }
                 }
 
                 @media (max-width: 767px) {
@@ -303,13 +333,6 @@ const Dashboard = () => {
                     .dashboard-stats-grid {
                         grid-template-columns: 1fr;
                     }
-                    .dashboard-actions-head {
-                        flex-direction: column;
-                        align-items: flex-start;
-                    }
-                    .dashboard-actions-grid {
-                        grid-template-columns: 1fr;
-                    }
                     .dashboard-preview-header {
                         flex-direction: column;
                         align-items: flex-start;
@@ -329,6 +352,23 @@ const Dashboard = () => {
                         right: 1rem;
                         top: auto;
                         bottom: 1rem;
+                    }
+                    .payment-transactions-head {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 8px;
+                    }
+                    .payment-transactions-grid,
+                    .payment-transactions-grid.head {
+                        grid-template-columns: 1fr;
+                        gap: 6px;
+                    }
+                    .payment-transactions-grid.head {
+                        display: none;
+                    }
+                    .payment-transactions-row {
+                        padding-top: 10px;
+                        padding-bottom: 10px;
                     }
                 }
             `}</style>
@@ -360,13 +400,13 @@ const Dashboard = () => {
                                 <div>
                                     <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', margin: 0 }}>Electricity Distribution Lanka (Pvt) Ltd</p>
                                     <h1 style={{ color: 'white', fontSize: '26px', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>
-                                        Welcome, {currentAccount?.customerName?.split(' ')}!
+                                        Welcome , {formatWelcomeName(currentAccount?.customerName)} !
                                     </h1>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
                                 <span style={{ background: 'rgba(255,255,255,0.15)', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', backdropFilter: 'blur(4px)' }}>
-                                    Acc: {currentAccount?.accountNumber}
+                                    Address : {currentAccount?.address || 'Address not available'}
                                 </span>
                                 <span style={{ background: 'rgba(255,255,255,0.15)', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', backdropFilter: 'blur(4px)' }}>
                                     {currentAccount?.tariff} Tariff
@@ -379,7 +419,7 @@ const Dashboard = () => {
 
                         {/* Right Section - Account Details */}
                         <div className="dashboard-account-panel">
-                            <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 12px' }}>Account Details</p>
+                            <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 12px' }}>Customer Information</p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 <div>
                                     <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px', margin: '0 0 2px' }}>Customer Name</p>
@@ -388,10 +428,6 @@ const Dashboard = () => {
                                 <div>
                                     <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px', margin: '0 0 2px' }}>Account Number</p>
                                     <p style={{ color: 'white', fontSize: '15px', fontWeight: 700, margin: 0 }}>{currentAccount?.accountNumber}</p>
-                                </div>
-                                <div>
-                                    <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px', margin: '0 0 2px' }}>Contact</p>
-                                    <p style={{ color: 'white', fontSize: '13px', fontWeight: 600, margin: 0 }}>{currentAccount?.phone}</p>
                                 </div>
                             </div>
                         </div>
@@ -430,7 +466,7 @@ const Dashboard = () => {
 
                     {/* Due Date */}
                     <div className="stat-card">
-                        <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#edc33a', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Due Date</p>
+                        <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#e0ad04', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Due Date</p>
                         <p style={{ margin: 0, fontSize: '22px', fontWeight: 900, color: '#1e293b', lineHeight: '1.2' }}>
                             {dueDate ? formatDate(dueDate) : 'N/A'}
                         </p>
@@ -445,223 +481,41 @@ const Dashboard = () => {
                     <div className="stat-card">
                         <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#2da316', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Last Payment</p>
                         <p style={{ margin: 0, fontSize: '32px', fontWeight: 900, color: '#1e293b', lineHeight: '1.2' }}>
-                            {currentAccount?.lastPaymentAmount
-                                ? formatCurrency(currentAccount.lastPaymentAmount)
-                                : lastPaymentFromAPI
-                                    ? formatCurrency(lastPaymentFromAPI.paidAmount || lastPaymentFromAPI.amount || 0)
-                                    : lastPayment
-                                        ? formatCurrency(lastPayment.amount)
-                                        : 'None'
-                            }
+                            {paymentHistory.length > 0 ? formatCurrency(totalPaymentAmount) : 'None'}
                         </p>
-                        {(currentAccount?.lastPaymentDate || lastPaymentFromAPI || lastPayment) && (
+                        {paymentHistory.length > 0 && (
                             <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
-                                {currentAccount?.lastPaymentDate
-                                    ? formatDate(currentAccount.lastPaymentDate)
-                                    : lastPaymentFromAPI
-                                        ? formatDate(lastPaymentFromAPI.paidDate || lastPaymentFromAPI.paymentDate || lastPaymentFromAPI.date || new Date())
-                                        : formatDate(lastPayment.paymentDate)
-                                }
+                                Noted: Un-Accounted Payment Details Are Subject To Be Confirmed.
                             </p>
                         )}
                     </div>
 
-                    {/* Units Used */}
-                    <div className="stat-card">
-                        <p style={{ margin: '0 0 8px', fontSize: '16px', color: '#ea580c', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Units Used</p>
-                        <p style={{ margin: 0, fontSize: '32px', fontWeight: 900, color: '#1e293b', lineHeight: '1.2' }}>
-                            {currentAccount?.units
-                                ? <>{currentAccount.units} <span style={{ fontSize: '16px', fontWeight: 600, color: '#94a3b8' }}>kWh</span></>
-                                : currentBill?.units
-                                    ? <>{currentBill.units} <span style={{ fontSize: '16px', fontWeight: 600, color: '#94a3b8' }}>kWh</span></>
-                                    : 'N/A'
-                            }
-                        </p>
-                        <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
-                            {currentAccount?.billingMonth || 'This billing period'}
-                        </p>
-                    </div>
                 </div>
 
-                {/* ── Quick Actions - Horizontal ── */}
-                <div className="dashboard-section">
-                    <div className="dashboard-actions-head">
-                        <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-                            <div style={{ width: '4px', height: '24px', background: 'linear-gradient(135deg, #F2C200, #d9af00)', borderRadius: '2px' }} />
-                            Quick Actions
-                        </h2>
-                        <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: 600 }}>Payments and bill access</p>
-                    </div>
-
-                    <div className="dashboard-actions-grid">
-
-                        {/* Last Bill Payment */}
-                        <Link to="/payments" style={{ textDecoration: 'none' }}>
-                            <div style={{
-                                background: 'linear-gradient(135deg, #fdf0f0 0%, #fcdcdc 100%)',
-                                borderRadius: '20px',
-                                padding: '26px',
-                                border: '2px solid #913434',
-                                transition: 'all 0.3s ease',
-                                cursor: 'pointer',
-                                height: '100%',
-                                minHeight: '138px'
-                            }} className="dash-card">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-                                    <div style={{
-                                        background: 'linear-gradient(135deg, #a31616, #801535)',
-                                        borderRadius: '16px',
-                                        width: '56px',
-                                        height: '56px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        boxShadow: '0 4px 12px rgba(163, 22, 22, 0.3)'
-                                    }}>
-                                        <svg width="28" height="28" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <p style={{ margin: 0, fontWeight: 800, color: '#531414', fontSize: '18px', lineHeight: '1.3' }}>Last Bill Payment</p>
-                                        <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#c52222', fontWeight: 600 }}>View live payment transactions from the account</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </Link>
-
-                        {/* Pay Now or Print Bill */}
-                        {currentBill && !currentBill.isPaid ? (
-                            <div
-                                onClick={() => setShowPaymentModal(true)}
-                                style={{
-                                    background: 'linear-gradient(135deg, #7A0026 0%, #5C001D 100%)',
-                                    borderRadius: '20px',
-                                    padding: '24px',
-                                    border: '2px solid #0ec8e9',
-                                    cursor: 'pointer',
-                                    boxShadow: '0 8px 24px rgba(29, 188, 216, 0.4)',
-                                    position: 'relative',
-                                    overflow: 'hidden',
-                                    height: '100%'
-                                }}
-                                className="dash-card"
-                            >
-                                {/* Shine effect */}
-                                <div style={{ position: 'absolute', top: -10, right: -10, width: '100px', height: '100px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.2), transparent)', pointerEvents: 'none' }} />
-
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px', position: 'relative', zIndex: 1 }}>
-                                    <div style={{
-                                        background: 'rgba(255,255,255,0.25)',
-                                        borderRadius: '16px',
-                                        width: '56px',
-                                        height: '56px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        backdropFilter: 'blur(8px)'
-                                    }}>
-                                        <svg width="28" height="28" fill="none" stroke="white" strokeWidth="2.5" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <p style={{ margin: 0, fontWeight: 800, color: 'white', fontSize: '18px', lineHeight: '1.3' }}>Pay Now</p>
-                                        <p style={{ margin: '4px 0 0', fontSize: '15px', color: 'rgba(255,255,255,0.95)', fontWeight: 600 }}>
-                                            {formatCurrency(currentBill.totalAmount)} due
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={handlePrintCurrentBill}
-                                style={{ textDecoration: 'none', border: 'none', padding: 0, background: 'transparent', width: '100%', textAlign: 'left' }}
-                            >
-                                <div style={{
-                                    background: 'linear-gradient(135deg, #fffef7 0%, #fffaeb 100%)',
-                                    borderRadius: '20px',
-                                    padding: '26px',
-                                    border: '2px solid #fcd34d',
-                                    transition: 'all 0.3s ease',
-                                    cursor: 'pointer',
-                                    height: '100%',
-                                    minHeight: '138px'
-                                }} className="dash-card">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-                                        <div style={{
-                                            background: 'linear-gradient(135deg, #F2C200, #d9af00)',
-                                            borderRadius: '16px',
-                                            width: '56px',
-                                            height: '56px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            boxShadow: '0 4px 12px rgba(245,158,11,0.3)'
-                                        }}>
-                                            <svg width="28" height="28" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p style={{ margin: 0, fontWeight: 800, color: '#78350f', fontSize: '18px', lineHeight: '1.3' }}>Print Bill</p>
-                                            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#d97706', fontWeight: 600 }}>Preview and download the current bill PDF</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </button>
-                        )}
-                    </div>
-                </div>
-
-                {/* ── Main Grid ── */}
-                <div className="dashboard-section">
-                    <div className="dashboard-main-grid">
-
-                        {/* Billing Details */}
-                        <div className="dash-card">
-                            <p className="section-title">
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                                    Last Billing Details
-                                </span>
-                            </p>
-
-                            {paymentHistory.length > 0 ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {paymentHistory.map((payment) => (
-                                        <div key={payment.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: '#fdf0f9', borderRadius: '10px' }}>
-                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#a38216', flexShrink: 0 }} />
-                                            <span style={{ fontSize: '13px', color: '#282f3a', flex: 1 }}>{formatDate(payment.paymentDate)}</span>
-                                            <span style={{ fontWeight: 700, color: '#a38216', fontSize: '14px' }}>{formatCurrency(payment.amount)}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p style={{ color: '#94a3b8', fontSize: '13px' }}>No payments available</p>
-                            )}
+                {paymentHistory.length > 0 && (
+                    <div className="payment-transactions">
+                        <div className="payment-transactions-head">
+                            <p style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>Last Payment Details</p>
+                            <span style={{ fontSize: '13px', color: '#64748b', background: 'white', border: '1.5px solid #eef0f4', borderRadius: '100px', padding: '4px 14px', fontWeight: 500 }}>
+                                {paymentHistory.length} records
+                            </span>
                         </div>
 
-                        {/* Meter Readings */}
-                        <div className="dash-card">
-                            <p className="section-title">
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                                    Meter Readings
-                                </span>
-                            </p>
-
-                            {currentAccount?.units ? (
-                                <div className="info-row">
-                                    <span className="info-label">Units Used</span>
-                                    <span className="info-value">{currentAccount.units} kWh</span>
-                                </div>
-                            ) : (
-                                <p style={{ color: '#94a3b8', fontSize: '13px' }}>No meter readings available</p>
-                            )}
-
+                        <div className="payment-transactions-grid head">
+                            <span>Date</span>
+                            <span>Method</span>
+                            <span>Amount (LKR)</span>
                         </div>
+
+                        {paymentHistory.map((payment, index) => (
+                            <div key={payment.paymentId || payment.id || index} className="payment-transactions-grid payment-transactions-row">
+                                <span>{formatDate(payment.paidDate || payment.paymentDate || payment.date)}</span>
+                                <span>{payment.method || 'API Payment'}</span>
+                                <span>{new Intl.NumberFormat('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(payment.paidAmount ?? payment.amount ?? 0))}</span>
+                            </div>
+                        ))}
                     </div>
-                </div>
+                )}
 
                 {/* ── Notifications ── */}
                 {notifications?.length > 0 && (
@@ -675,110 +529,6 @@ const Dashboard = () => {
                     </div>
                 )}
 
-                {/* Payment Success Alert */}
-                {paymentSuccess && (
-                    <div className="dashboard-success-alert animate-fadeIn">
-                        <div className="bg-green-50 border-2 border-green-500 rounded-xl shadow-xl p-4 max-w-md">
-                            <div className="flex items-start">
-                                <div className="flex-shrink-0">
-                                    <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <div className="ml-3">
-                                    <h3 className="text-sm font-semibold text-green-800">Payment Successful!</h3>
-                                    <p className="text-sm text-green-700 mt-1">
-                                        Your payment of {currentBill && formatCurrency(currentBill.totalAmount)} has been processed successfully.
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => setPaymentSuccess(false)}
-                                    className="ml-auto flex-shrink-0 text-green-600 hover:text-green-800"
-                                >
-                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Payment Modal */}
-                {currentBill && (
-                    <PaymentModal
-                        isOpen={showPaymentModal}
-                        onClose={() => setShowPaymentModal(false)}
-                        bill={currentBill}
-                        onPaymentSuccess={handlePaymentSuccess}
-                    />
-                )}
-
-                {billPreviewUrl && (
-                    <div style={{
-                        position: 'fixed',
-                        inset: 0,
-                        background: 'rgba(15, 23, 42, 0.65)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 99999,
-                        padding: '20px'
-                    }}>
-                        <div style={{
-                            background: '#ffffff',
-                            borderRadius: '16px',
-                            width: 'min(980px, 100%)',
-                            height: 'min(90vh, 860px)',
-                            boxShadow: '0 24px 60px rgba(15, 23, 42, 0.35)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            overflow: 'hidden'
-                        }}>
-                            <div className="dashboard-preview-header">
-                                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#1e293b' }}>Bill Preview</h3>
-                                <div className="dashboard-preview-actions">
-                                    <a
-                                        href={billPreviewUrl}
-                                        download={billPreviewFileName || 'CEB_Bill.pdf'}
-                                        style={{
-                                            background: 'linear-gradient(135deg, #7A0026, #5C001D)',
-                                            color: '#fff',
-                                            textDecoration: 'none',
-                                            borderRadius: '10px',
-                                            padding: '9px 16px',
-                                            fontSize: '14px',
-                                            fontWeight: 700
-                                        }}
-                                    >
-                                        Download PDF
-                                    </a>
-                                    <button
-                                        type="button"
-                                        onClick={closeBillPreview}
-                                        style={{
-                                            border: '1px solid #cbd5e1',
-                                            background: '#fff',
-                                            color: '#334155',
-                                            borderRadius: '10px',
-                                            padding: '9px 16px',
-                                            fontSize: '14px',
-                                            fontWeight: 600,
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        Close
-                                    </button>
-                                </div>
-                            </div>
-                            <iframe
-                                title="Bill PDF Preview"
-                                src={billPreviewUrl}
-                                style={{ border: 'none', width: '100%', height: '100%', background: '#f8fafc' }}
-                            />
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );

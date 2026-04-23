@@ -7,9 +7,9 @@ const Footer = () => {
     return (
         <footer className="bg-gradient-to-br from-gray-900 via-primary-900 to-gray-900 text-white mt-auto no-print">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-start">
                     {/* About */}
-                    <div>
+                    <div className="md:pr-6">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 text-center sm:text-left">
                             <img src={logoImage} alt="EDL" className="h-12 w-auto object-contain drop-shadow-lg mx-auto sm:mx-0" />
                             <h3 className="text-lg font-semibold">Electricity Distribution Lanka (Pvt) Ltd</h3>
@@ -20,7 +20,7 @@ const Footer = () => {
                     </div>
 
                     {/* Contact */}
-                    <div>
+                    <div className="md:justify-self-end md:max-w-md w-full">
                         <h3 className="text-lg font-semibold mb-4">Contact Us</h3>
                         <ul className="space-y-2 text-sm text-gray-300">
                             <li className="flex items-center">
@@ -33,7 +33,7 @@ const Footer = () => {
                                 <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
-                                customercare@ceb.lk
+                                info@edl.lk
                             </li>
                             <li className="flex items-start">
                                 <svg className="w-4 h-4 mr-2 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -45,27 +45,6 @@ const Footer = () => {
                         </ul>
                     </div>
 
-                    {/* Quick Links */}
-                    <div>
-                        <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
-                        <ul className="space-y-2 text-sm text-gray-300">
-                            <li>
-                                <a href="#" className="hover:text-white transition duration-200">FAQ</a>
-                            </li>
-                            <li>
-                                <a href="#" className="hover:text-white transition duration-200">Payment Methods</a>
-                            </li>
-                            <li>
-                                <a href="#" className="hover:text-white transition duration-200">Tariff Information</a>
-                            </li>
-                            <li>
-                                <a href="#" className="hover:text-white transition duration-200">Power Outages</a>
-                            </li>
-                            <li>
-                                <a href="#" className="hover:text-white transition duration-200">Terms & Conditions</a>
-                            </li>
-                        </ul>
-                    </div>
                 </div>
 
                 <div className="border-t border-primary-700 mt-8 pt-6 text-center text-sm text-gray-400">

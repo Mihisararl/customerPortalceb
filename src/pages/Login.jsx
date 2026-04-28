@@ -8,7 +8,8 @@ import logoImage from '../assets/ceb-1.png';
 
 const Login = () => {
     const [accountNumber, setAccountNumber] = useState('');
-    const [mobileNumber, setMobileNumber] = useState('');
+    const [registeredMobile, setRegisteredMobile] = useState('');
+    const [maskedRegisteredMobile, setMaskedRegisteredMobile] = useState('');
     const [otpCode, setOtpCode] = useState('');
     const [loginStep, setLoginStep] = useState('account');
     const [validatedAccountName, setValidatedAccountName] = useState('');
@@ -48,23 +49,25 @@ const Login = () => {
         try {
             const accountResponse = await validateAccountForLogin(accountNumber.trim());
             setValidatedAccountName(accountResponse.customerName || '');
+            setRegisteredMobile(accountResponse.mobileNo || '');
+            setMaskedRegisteredMobile(accountResponse.maskedMobileNo || '');
             setLoginStep('mobile');
         } catch (err) {
             setError(err.message);
         }
     };
 
-    const handleMobileSubmit = async (e) => {
+    const handleRequestOtp = async (e) => {
         e.preventDefault();
         setError('');
 
-        if (!mobileNumber.trim()) {
-            setError('Please enter your mobile number');
+        if (!registeredMobile.trim()) {
+            setError('No registered mobile number found for this account');
             return;
         }
 
         try {
-            const otpResponse = await requestOtpForAccount(accountNumber.trim(), mobileNumber.trim());
+            const otpResponse = await requestOtpForAccount(accountNumber.trim());
             setOtpTarget(otpResponse.maskedMobileNo || otpResponse.mobileNo || 'your mobile number');
             setLoginStep('otp');
         } catch (err) {
@@ -93,7 +96,7 @@ const Login = () => {
         setError('');
 
         try {
-            const otpResponse = await requestOtpForAccount(accountNumber.trim(), mobileNumber.trim());
+            const otpResponse = await requestOtpForAccount(accountNumber.trim());
             setOtpTarget(otpResponse.maskedMobileNo || otpResponse.mobileNo || 'your mobile number');
         } catch (err) {
             setError(err.message);
@@ -104,7 +107,8 @@ const Login = () => {
         clearPendingOtpLogin();
         setLoginStep('account');
         setValidatedAccountName('');
-        setMobileNumber('');
+        setRegisteredMobile('');
+        setMaskedRegisteredMobile('');
         setOtpCode('');
         setOtpTarget('');
         setError('');
@@ -145,7 +149,7 @@ const Login = () => {
                 {/* Login Card with Gradient */}
                 <div className="bg-gradient-to-br from-white via-amber-50 to-white rounded-2xl shadow-2xl p-5 sm:p-8 backdrop-blur-sm border border-white/50">
                     <h2 className="text-xl sm:text-2xl font-bold text-center bg-gradient-to-r from-primary-600 to-primary-700 bg-clip-text text-transparent mb-6">
-                        {loginStep === 'otp' ? 'Verify OTP' : loginStep === 'mobile' ? 'Enter Mobile Number' : 'Sign In'}
+                        {loginStep === 'otp' ? 'Verify OTP' : loginStep === 'mobile' ? 'Request OTP' : 'Sign In'}
                     </h2>
 
                     {error && (
@@ -192,30 +196,20 @@ const Login = () => {
                     )}
 
                     {loginStep === 'mobile' && (
-                        <form onSubmit={handleMobileSubmit} className="space-y-5">
+                        <form onSubmit={handleRequestOtp} className="space-y-5">
                             <div>
                                 <p className="text-sm text-gray-600 mb-3">
                                     Account verified{validatedAccountName ? ` for ${validatedAccountName}` : ''}.
                                 </p>
-                                <label htmlFor="mobileNumber" className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Mobile Number
-                                </label>
-                                <input
-                                    id="mobileNumber"
-                                    type="tel"
-                                    value={mobileNumber}
-                                    onChange={(e) => {
-                                        const value = e.target.value.replace(/\D/g, '');
-                                        if (value.length <= 12) {
-                                            setMobileNumber(value);
-                                        }
-                                    }}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                                    placeholder="07XXXXXXXX"
-                                    disabled={loading}
-                                />
+                                <div className="bg-white border-2 border-gray-300 rounded-xl px-4 py-3">
+                                    <p className="text-xs text-gray-500 mb-1">Registered Mobile Number</p>
+                                    <p className="text-sm font-semibold text-gray-900 tracking-wide">{registeredMobile || '-'}</p>
+                                    {maskedRegisteredMobile && maskedRegisteredMobile !== registeredMobile && (
+                                        <p className="text-xs text-gray-500 mt-1">Masked: {maskedRegisteredMobile}</p>
+                                    )}
+                                </div>
                                 <p className="mt-1.5 text-xs text-gray-500">
-                                    Enter the mobile number that should receive the OTP.
+                                    Click request OTP to send a code to this mobile number.
                                 </p>
                             </div>
 
@@ -225,7 +219,7 @@ const Login = () => {
                                     disabled={loading}
                                     className="w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {loading ? 'Sending OTP...' : 'Send OTP'}
+                                    {loading ? 'Sending OTP...' : 'Request OTP'}
                                 </button>
                                 <button
                                     type="button"

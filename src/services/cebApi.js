@@ -8,8 +8,10 @@
 const API_BASE_URL = '';
 const API_ENDPOINT = '/api/customer/CEBCustomer_CurrantBalance';
 const API_LOGIN_ENDPOINT = '/api/Auth/login';
+const ACCOUNT_MOBILE_LOOKUP_ENDPOINT = '/customer-details-api/api/Customerdetails/by-account';
 const OTP_SEND_ENDPOINT = '/shared-api/api/otp/sendOtp';
 const OTP_VALIDATE_ENDPOINT = '/shared-api/api/otp/validateOtp';
+const OTP_DEBUG_LOG_ENDPOINT = '/dev/otp-log';
 const OTP_SYSTEM_CODE = 'smc';
 
 // API Authentication Configuration
@@ -67,8 +69,117 @@ export const maskMobileNumber = (mobileNo) => {
     return `${normalized.slice(0, 3)}***${normalized.slice(-3)}`;
 };
 
-export const sendLoginOtp = async (mobileNo) => {
+const extractMobileNumberFromLookupResponse = (data) => {
+    if (!data) {
+        return '';
+    }
+
+    const firstCustomer = Array.isArray(data?.data) && data.data.length > 0
+        ? data.data[0]
+        : null;
+
+    const firstTelephoneNo = Array.isArray(firstCustomer?.telephoneNos) && firstCustomer.telephoneNos.length > 0
+        ? firstCustomer.telephoneNos[0]
+        : null;
+
+    const candidates = [
+        data.mobileNo,
+        data.mobileNumber,
+        data.phone,
+        data.telephone,
+        data.contactNo,
+        data.customerMobileNo,
+        data.customerMobileNumber,
+        data?.data?.mobileNo,
+        data?.data?.mobileNumber,
+        data?.customer?.mobileNo,
+        data?.customer?.mobileNumber,
+        firstCustomer?.telephoneNo,
+        firstCustomer?.telephone,
+        firstCustomer?.mobileNo,
+        firstCustomer?.mobileNumber,
+        firstTelephoneNo,
+    ];
+
+    const validMobile = candidates
+        .map((value) => normalizeMobileNumber(value))
+        .find((value) => Boolean(value));
+
+    return validMobile || '';
+};
+
+const logOtpForTesting = async ({ accountNumber, mobileNo, otp }) => {
+    try {
+        await fetch(`${API_BASE_URL}${OTP_DEBUG_LOG_ENDPOINT}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                accountNumber,
+                mobileNo,
+                otp,
+            }),
+        });
+    } catch (error) {
+        console.warn('OTP debug log endpoint is not available:', error);
+    }
+};
+
+export const generateDebugOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+
+export const getMobileNumberByAccount = async (accountNumber) => {
+    const accountNumberStr = accountNumber?.toString().trim();
+
+    if (!accountNumberStr || !/^\d{10}$/.test(accountNumberStr)) {
+        throw new Error('Account number must be exactly 10 digits');
+    }
+
+    let response;
+
+    try {
+        response = await fetch(`${API_BASE_URL}${ACCOUNT_MOBILE_LOOKUP_ENDPOINT}?accountNumber=${encodeURIComponent(accountNumberStr)}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+    } catch {
+        throw new Error('Unable to fetch registered mobile number. Please try again.');
+    }
+
+    let data = null;
+    try {
+        data = await response.json();
+    } catch {
+        data = null;
+    }
+
+    if (!response.ok) {
+        if (response.status === 404) {
+            throw new Error('No registered mobile number found for this account.');
+        }
+
+        throw new Error('Failed to fetch registered mobile number.');
+    }
+
+    const mobileNo = extractMobileNumberFromLookupResponse(data);
+
+    if (!mobileNo) {
+        throw new Error('Registered mobile number is not available for this account.');
+    }
+
+    return {
+        mobileNo,
+        maskedMobileNo: maskMobileNumber(mobileNo),
+        rawResponse: data,
+    };
+};
+
+export const sendLoginOtp = async (mobileNo, options = {}) => {
     const normalizedMobileNo = normalizeMobileNumber(mobileNo);
+    const debugOtp = options?.debugOtp?.toString().trim();
+    const accountNumber = options?.accountNumber?.toString().trim();
 
     if (!normalizedMobileNo) {
         throw new Error('Registered mobile number is invalid for OTP delivery.');
@@ -99,9 +210,20 @@ export const sendLoginOtp = async (mobileNo) => {
         throw new Error('OTP service rejected the request. Please try again later.');
     }
 
+    if (debugOtp) {
+        // Temporary debug mode: logs OTP to local dev log so QA can test without SMS access.
+        await logOtpForTesting({
+            accountNumber,
+            mobileNo: normalizedMobileNo,
+            otp: debugOtp,
+        });
+        console.info(`[OTP DEBUG] account=${accountNumber || 'N/A'} mobile=${normalizedMobileNo} otp=${debugOtp}`);
+    }
+
     return {
         mobileNo: normalizedMobileNo,
         result,
+        debugOtp,
     };
 };
 

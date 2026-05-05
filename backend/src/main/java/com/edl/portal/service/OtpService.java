@@ -71,6 +71,11 @@ public class OtpService {
                 throw new OtpException("Invalid response from OTP service");
             }
 
+            // DEV: log the generated OTP for testing purposes
+            log.info("==================================================");
+            log.info("[DEV] Generated OTP for mobile {}: {}", mobileNumberUtil.maskMobileNumber(normalizedMobileNo), responseBody.trim());
+            log.info("==================================================");
+
             // Handle numeric response
             try {
                 int result = Integer.parseInt(responseBody.trim());

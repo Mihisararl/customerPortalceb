@@ -1,12 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
-    generateDebugOtp,
     getMobileNumberByAccount,
     maskMobileNumber,
     sendLoginOtp,
     validateAccountNumber,
     validateLoginOtp
-} from '../services/cebApi';
+} from '../services/backendApi';
 
 const AppContext = createContext();
 
@@ -41,11 +40,10 @@ export const AppProvider = ({ children }) => {
 
         try {
             const customerData = await validateAccountNumber(accountNumber);
-            const mobileLookup = await getMobileNumberByAccount(accountNumber);
 
             setPendingOtpLogin({
                 accountNumber: customerData.accountNumber,
-                mobileNo: mobileLookup.mobileNo,
+                mobileNo: customerData.mobileNo || '',
                 debugOtp: '',
             });
 
@@ -53,8 +51,8 @@ export const AppProvider = ({ children }) => {
             return {
                 accountNumber: customerData.accountNumber,
                 customerName: customerData.customerName,
-                mobileNo: mobileLookup.mobileNo,
-                maskedMobileNo: mobileLookup.maskedMobileNo,
+                mobileNo: customerData.mobileNo || '',
+                maskedMobileNo: customerData.mobileNo ? maskMobileNumber(customerData.mobileNo) : '',
             };
         } catch (err) {
             const errorMsg = err.message || 'Failed to validate account number';
@@ -83,23 +81,19 @@ export const AppProvider = ({ children }) => {
                 throw new Error('Registered mobile number is unavailable for this account.');
             }
 
-            const debugOtp = generateDebugOtp();
-            const otpResult = await sendLoginOtp(mobileLookup.mobileNo, {
-                accountNumber: resolvedAccountNumber,
-                debugOtp,
-            });
+            const otpResult = await sendLoginOtp(mobileLookup.mobileNo);
 
             setPendingOtpLogin({
                 accountNumber: resolvedAccountNumber,
                 mobileNo: otpResult.mobileNo,
-                debugOtp,
+                debugOtp: '',
             });
 
             setLoading(false);
             return {
                 mobileNo: otpResult.mobileNo,
-                maskedMobileNo: maskMobileNumber(otpResult.mobileNo),
-                debugOtp,
+                maskedMobileNo: otpResult.maskedMobileNo,
+                debugOtp: '',
             };
         } catch (err) {
             const errorMsg = err.message || 'Failed to send OTP';
@@ -118,17 +112,7 @@ export const AppProvider = ({ children }) => {
                 throw new Error('Please request OTP first.');
             }
 
-            const normalizedOtp = otp?.toString().trim();
-            const isDebugOtp = Boolean(
-                pendingOtpLogin.debugOtp && normalizedOtp === pendingOtpLogin.debugOtp
-            );
-
-            if (!isDebugOtp) {
-                await validateLoginOtp({
-                    mobileNo: pendingOtpLogin.mobileNo,
-                    otp,
-                });
-            }
+            await validateLoginOtp(pendingOtpLogin.mobileNo, otp);
 
             const customerData = await validateAccountNumber(pendingOtpLogin.accountNumber);
 

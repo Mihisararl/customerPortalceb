@@ -21,7 +21,7 @@ const otpDebugLoggerPlugin = () => ({
                 try {
                     const payload = body ? JSON.parse(body) : {};
                     const logFilePath = path.resolve(process.cwd(), 'otp-debug.log');
-                    const logLine = `${new Date().toISOString()} | account=${payload.accountNumber || 'N/A'} | mobile=${payload.mobileNo || 'N/A'} | otp=${payload.otp || 'N/A'}\n`;
+                    const logLine = new Date().toISOString() + ' | account=' + (payload.accountNumber || 'N/A') + ' | mobile=' + (payload.mobileNo || 'N/A') + ' | otp=' + (payload.otp || 'N/A') + '\n';
 
                     fs.appendFileSync(logFilePath, logLine, 'utf8');
                     res.setHeader('Content-Type', 'application/json');

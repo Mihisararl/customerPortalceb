@@ -1,0 +1,50 @@
+# Backend
+
+## IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+## Build
+/target/
+build/
+dist/
+*.jar
+*.war
+*.zip
+
+## Maven
+dependency-reduced-pom.xml
+pom.xml.tag
+pom.xml.asc
+
+## Gradle
+.gradle
+gradle-app.setting
+.gradletasknamecache
+
+## Environment & Configuration
+.env
+.env.local
+.env.*.local
+application-local.properties
+
+## Secrets
+*.pem
+*.key
+*.crt
+keystore.p12
+
+## Logs
+logs/
+*.log
+*.log.*
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Spring
+spring-boot-devtools.properties
